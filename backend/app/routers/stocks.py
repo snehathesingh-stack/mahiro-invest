@@ -46,20 +46,70 @@ def _snapshot_to_dict(stock, snap) -> dict:
 
 
 @router.post("/{ticker}/refresh")
-def refresh_stock(ticker: str, db: Session = Depends(get_db)) -> dict:
+def refresh_stock(
+    ticker: str,
+    source: str = "merged",
+    db: Session = Depends(get_db),
+) -> dict:
     """
-    Fetch fresh fundamentals from yfinance and persist a new snapshot.
+    Fetch fresh fundamentals and persist a new snapshot.
+
+    Query params:
+        source: "yfinance" | "screener" | "merged" (default: merged)
 
     Example: POST /api/stocks/RELIANCE.NS/refresh
+             POST /api/stocks/RELIANCE.NS/refresh?source=screener
     """
+    from app.services import yfinance_fetcher, screener_fetcher, merger
+
     ticker = ticker.upper()
-    try:
-        data = yfinance_fetcher.fetch_fundamentals(ticker)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.exception(f"Unexpected error fetching {ticker}")
-        raise HTTPException(status_code=502, detail=f"Upstream error: {str(e)}")
+    source = source.lower()
+
+    if source not in ("yfinance", "screener", "merged"):
+        raise HTTPException(status_code=400, detail=f"Invalid source: {source}")
+
+    yf_result = None
+    sc_result = None
+    errors: dict[str, str] = {}
+
+    # Fetch from yfinance if needed
+    if source in ("yfinance", "merged"):
+        try:
+            yf_result = yfinance_fetcher.fetch_fundamentals(ticker)
+        except Exception as e:
+            errors["yfinance"] = str(e)
+            logger.warning(f"yfinance failed for {ticker}: {e}")
+
+    # Fetch from screener if needed
+    if source in ("screener", "merged"):
+        try:
+            sc_result = screener_fetcher.fetch_fundamentals(ticker)
+        except Exception as e:
+            errors["screener"] = str(e)
+            logger.warning(f"screener failed for {ticker}: {e}")
+
+    # Decide what to do based on what succeeded
+    if source == "yfinance":
+        if yf_result is None:
+            raise HTTPException(
+                status_code=502,
+                detail=f"yfinance failed: {errors.get('yfinance', 'unknown')}",
+            )
+        data = yf_result
+    elif source == "screener":
+        if sc_result is None:
+            raise HTTPException(
+                status_code=502,
+                detail=f"screener failed: {errors.get('screener', 'unknown')}",
+            )
+        data = sc_result
+    else:  # merged
+        if yf_result is None and sc_result is None:
+            raise HTTPException(
+                status_code=502,
+                detail=f"All sources failed. yfinance: {errors.get('yfinance')}; screener: {errors.get('screener')}",
+            )
+        data = merger.merge_fundamentals(yf_result, sc_result)
 
     stock = upsert_stock(db, data["meta"])
     snap = save_snapshot(db, stock.id, data["snapshot"])
@@ -67,8 +117,10 @@ def refresh_stock(ticker: str, db: Session = Depends(get_db)) -> dict:
     db.refresh(stock)
     db.refresh(snap)
 
-    return _snapshot_to_dict(stock, snap)
-
+    response = _snapshot_to_dict(stock, snap)
+    if errors:
+        response["partial_errors"] = errors
+    return response
 
 @router.get("/{ticker}/fundamentals")
 def get_stock_fundamentals(ticker: str, db: Session = Depends(get_db)) -> dict:
