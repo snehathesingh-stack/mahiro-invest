@@ -49,6 +49,8 @@ FIELD_PREFERENCE = {
     # Income
     "dividend_yield_pct": ["screener", "yfinance"],
     "cash_flow_positive": ["yfinance", "screener"],
+    # Liquidity
+    "avg_volume_10d": ["yfinance", "screener"],
 }
 
 
@@ -97,7 +99,7 @@ def merge_fundamentals(
         "eps", "eps_growth_pct",
         "working_capital_ratio", "quick_ratio",
         "debtor_days", "public_holding_pct",
-        "dividend_yield_pct", "cash_flow_positive",
+        "dividend_yield_pct", "cash_flow_positive","avg_volume_10d",
     ]
     for field in snapshot_fields:
         merged_snap[field] = _pick(

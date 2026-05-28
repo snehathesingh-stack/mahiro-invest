@@ -54,6 +54,14 @@ def fetch_fundamentals(ticker: str) -> dict[str, Any]:
     if not info or not info.get("longName"):
         raise ValueError(f"No data found for ticker {ticker} on yfinance")
 
+# 10-day average daily volume — quality of liquidity check
+    avg_volume_10d: float | None = None
+    try:
+        hist = t.history(period="10d")
+        if not hist.empty and "Volume" in hist.columns:
+            avg_volume_10d = float(hist["Volume"].mean())
+    except Exception as e:
+        logger.warning(f"Failed to fetch 10d history for {ticker}: {e}")
     market_cap_raw = _safe_float(info.get("marketCap"))
     market_cap_cr = round(market_cap_raw / 1e7, 2) if market_cap_raw else None
 
@@ -80,6 +88,7 @@ def fetch_fundamentals(ticker: str) -> dict[str, Any]:
         "debtor_days": None,
         "public_holding_pct": None,
         "cash_flow_positive": None,
+        "avg_volume_10d": avg_volume_10d,
         "source": "yfinance",
         "raw_data": {k: v for k, v in info.items() if isinstance(v, (str, int, float, bool, type(None)))},
     }

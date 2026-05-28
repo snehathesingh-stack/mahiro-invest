@@ -39,6 +39,7 @@ def _snapshot_to_dict(stock, snap) -> dict:
             "public_holding_pct": float(snap.public_holding_pct) if snap.public_holding_pct is not None else None,
             "dividend_yield_pct": float(snap.dividend_yield_pct) if snap.dividend_yield_pct is not None else None,
             "cash_flow_positive": snap.cash_flow_positive,
+            "avg_volume_10d": float(snap.avg_volume_10d) if snap.avg_volume_10d is not None else None,
         },
         "source": snap.source,
         "fetched_at": snap.fetched_at.isoformat() if snap.fetched_at else None,
@@ -138,3 +139,50 @@ def get_stock_fundamentals(ticker: str, db: Session = Depends(get_db)) -> dict:
         )
     stock, snap = result
     return _snapshot_to_dict(stock, snap)
+@router.get("/{ticker}/evaluate")
+def evaluate_stock(
+    ticker: str,
+    persona_id: int = 1,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Evaluate the latest snapshot of a stock against a persona's criteria.
+
+    Example: GET /api/stocks/RELIANCE.NS/evaluate?persona_id=1
+    """
+    from app.services import persona_evaluator
+    from app.models import Persona
+
+    ticker = ticker.upper()
+    result = get_latest_snapshot(db, ticker)
+    if not result:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No snapshot for {ticker}. Call POST /api/stocks/{ticker}/refresh first.",
+        )
+
+    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail=f"Persona {persona_id} not found")
+
+    stock, snap = result
+    snapshot_dict = _snapshot_to_dict(stock, snap)
+
+    fundamentals_with_mcap = {
+        **snapshot_dict["fundamentals"],
+        "market_cap_cr": snapshot_dict["market_cap_cr"],
+    }
+    evaluation = persona_evaluator.evaluate(fundamentals_with_mcap, persona.config)
+
+    return {
+        "ticker": stock.ticker,
+        "name": stock.name,
+        "persona": {"id": persona.id, "name": persona.name},
+        "fundamentals": snapshot_dict["fundamentals"],
+        "market_cap_cr": snapshot_dict["market_cap_cr"],
+        "sector": snapshot_dict["sector"],
+        "industry": snapshot_dict["industry"],
+        **evaluation,
+        "source": snapshot_dict["source"],
+        "fetched_at": snapshot_dict["fetched_at"],
+    }

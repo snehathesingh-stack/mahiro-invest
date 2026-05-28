@@ -61,6 +61,7 @@ def save_snapshot(db: Session, stock_id: int, snapshot_data: dict[str, Any]) -> 
         public_holding_pct=snapshot_data.get("public_holding_pct"),
         dividend_yield_pct=snapshot_data.get("dividend_yield_pct"),
         cash_flow_positive=snapshot_data.get("cash_flow_positive"),
+        avg_volume_10d=snapshot_data.get("avg_volume_10d"),
         source=snapshot_data["source"],
         raw_data=snapshot_data.get("raw_data"),
     )

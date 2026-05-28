@@ -24,8 +24,9 @@ class FundamentalSnapshot(Base):
     public_holding_pct = Column(Numeric(10, 2))
     dividend_yield_pct = Column(Numeric(10, 2))
     cash_flow_positive = Column(Boolean)
+    avg_volume_10d = Column(Numeric(15, 0))  # 10-day average daily volume
 
-    source = Column(String(50), nullable=False)  # "yfinance" / "screener" / "merged"
+    source = Column(String(50), nullable=False) 
     raw_data = Column(JSONB)
 
     fetched_at = Column(DateTime, server_default=func.now(), nullable=False, index=True)
