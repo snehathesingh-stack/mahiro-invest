@@ -59,12 +59,12 @@ export default function App() {
   if (!token) return <AuthPage onAuth={onAuth} />;
 
   return (
-    <div className="min-h-screen bg-stone-50 text-zinc-950">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-zinc-200 bg-white lg:block">
-        <div className="px-5 py-5 border-b border-zinc-200">
+    <div className="min-h-screen bg-zinc-50 text-zinc-950">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-white lg:block">
+        <div className="px-6 py-6 border-b border-zinc-200">
           <BrandBlock />
         </div>
-        <nav className="p-3 space-y-1">
+        <nav className="p-4 space-y-1">
           {NAV.map(([id, Icon, label]) => (
             <button key={id} title={label} onClick={() => setActive(id)} className={`nav-button ${active === id ? "nav-active" : ""}`}>
               <Icon size={18} />
@@ -73,9 +73,9 @@ export default function App() {
           ))}
         </nav>
       </aside>
-      <main className="lg:pl-64">
+      <main className="lg:pl-72">
         <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
-          <div className="flex items-center justify-between px-4 py-3 lg:px-8">
+          <div className="mx-auto flex max-w-[1500px] items-center justify-between px-4 py-4 lg:px-8">
             <div>
               <div className="text-sm text-zinc-500">Signed in as {user?.name || "Investor"}</div>
               <h1 className="text-xl font-semibold">{NAV.find((n) => n[0] === active)?.[2]}</h1>
@@ -88,7 +88,7 @@ export default function App() {
             </div>
           </div>
         </header>
-        <div className="px-4 py-6 lg:px-8">
+        <div className="mx-auto max-w-[1500px] px-4 py-6 lg:px-8">
           {active === "dashboard" && <Dashboard api={api} setActive={setActive} />}
           {active === "screener" && <Screener api={api} />}
           {active === "portfolio" && <Portfolio api={api} />}
@@ -102,11 +102,11 @@ export default function App() {
 
 function BrandBlock({ compact = false }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className={compact ? "flex items-center gap-3" : "flex items-center gap-4"}>
       <img className={compact ? "brand-logo-sm" : "brand-logo"} src={logoUrl} alt="Mahiro Invest" />
       <div>
-        <div className={compact ? "text-xl font-bold" : "text-2xl font-bold"}>Mahiro Invest</div>
-        <div className="mt-1 text-sm text-zinc-500">Personal NSE quality screener</div>
+        <div className={compact ? "text-xl font-bold" : "text-2xl font-bold leading-tight"}>Mahiro Invest</div>
+        <div className="mt-1 max-w-40 text-sm leading-snug text-zinc-500">Personal NSE quality screener</div>
       </div>
     </div>
   );
@@ -130,13 +130,7 @@ function AuthPage({ onAuth }) {
     <div className="min-h-screen grid place-items-center bg-zinc-950 px-4 text-white">
       <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
         <div className="mb-5">
-          <div className="flex items-center gap-3">
-            <img className="brand-logo-sm" src={logoUrl} alt="Mahiro Invest" />
-            <div>
-              <h1 className="text-2xl font-bold">Mahiro Invest</h1>
-              <p className="mt-1 text-sm text-zinc-400">Personal NSE workflow for quality investing.</p>
-            </div>
-          </div>
+          <BrandBlock compact />
         </div>
         {mode === "register" && <input className="auth-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" />}
         <input className="auth-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" />
@@ -159,16 +153,16 @@ function Dashboard({ api, setActive }) {
   return (
     <div className="space-y-6">
       <section className="hero-band">
-        <div>
+        <div className="max-w-4xl">
           <div className="inline-flex items-center gap-2 rounded bg-white/10 px-2 py-1 text-xs font-medium text-teal-50">
             <Sparkles size={14} /> Dad's 16-criteria workflow, now searchable
           </div>
-          <h2 className="mt-4 text-3xl font-semibold text-white">Tune your quality filters, run the screener, then inspect every pass or fail.</h2>
+          <h2 className="mt-4 text-2xl font-semibold text-white lg:text-3xl">Tune your quality filters, run the screener, then inspect every pass or fail.</h2>
         </div>
         <button className="primary-button bg-white text-teal-900 hover:bg-teal-50" onClick={() => setActive("screener")}><Play size={18} /> Open Screener</button>
       </section>
       <Stats stats={portfolio?.stats} />
-      <section className="grid gap-4 xl:grid-cols-2">
+      <section className="grid items-start gap-4 xl:grid-cols-[1fr_1fr]">
         <Panel title="Top Alerts" icon={Bell}>
           <AlertList alerts={alerts || []} />
         </Panel>
@@ -461,11 +455,11 @@ function EarningsList({ items, compact }) {
 }
 
 function Panel({ title, icon: Icon, children }) {
-  return <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"><div className="mb-4 flex items-center gap-2 text-base font-semibold"><Icon size={18} /> {title}</div>{children}</section>;
+  return <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"><div className="mb-4 flex items-center gap-2 text-base font-semibold text-zinc-900"><Icon size={18} className="text-teal-800" /> {title}</div>{children}</section>;
 }
 
 function Metric({ label, value }) {
-  return <div className="rounded-lg border border-zinc-200 bg-white p-4"><div className="text-xs uppercase text-zinc-500">{label}</div><div className="mt-1 text-xl font-semibold">{value}</div></div>;
+  return <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"><div className="text-xs font-medium uppercase text-zinc-500">{label}</div><div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div></div>;
 }
 
 function Badge({ ok, text }) {
