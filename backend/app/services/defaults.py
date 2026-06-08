@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-DAD_PERSONA_NAME = "Dad - Long-term Quality Investor"
+QUALITY_PERSONA_NAME = "Long-term Quality Investor"
+DAD_PERSONA_NAME = QUALITY_PERSONA_NAME
 
-DAD_PERSONA_CRITERIA = {
+QUALITY_PERSONA_CRITERIA = {
     "hard_filters": {
         "market_cap_cr": {"min": 5000},
         "pe_ratio": {"min": 10, "max": 25},
@@ -28,6 +29,7 @@ DAD_PERSONA_CRITERIA = {
     "portfolio_alerts": {"on_hard_filter_violation": "SELL IMMEDIATELY"},
     "earnings_strategy": {"buy_decisions": "before_earnings", "post_earnings": "rerun_persona"},
 }
+DAD_PERSONA_CRITERIA = QUALITY_PERSONA_CRITERIA
 
 NIFTY_500_SEED = [
     ("RELIANCE.NS", "Reliance Industries", "Energy"),

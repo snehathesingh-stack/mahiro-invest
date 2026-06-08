@@ -59,9 +59,9 @@ export default function App() {
   if (!token) return <AuthPage onAuth={onAuth} />;
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-950">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-zinc-200 bg-white lg:block">
-        <div className="px-6 py-6 border-b border-zinc-200">
+    <div className="app-shell">
+      <aside className="app-sidebar">
+        <div className="px-6 py-7 border-b border-amber-500/20">
           <BrandBlock />
         </div>
         <nav className="p-4 space-y-1">
@@ -74,11 +74,11 @@ export default function App() {
         </nav>
       </aside>
       <main className="lg:pl-72">
-        <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur">
+        <header className="app-header">
           <div className="mx-auto flex max-w-[1500px] items-center justify-between px-4 py-4 lg:px-8">
             <div>
-              <div className="text-sm text-zinc-500">Signed in as {user?.name || "Investor"}</div>
-              <h1 className="text-xl font-semibold">{NAV.find((n) => n[0] === active)?.[2]}</h1>
+              <div className="text-sm text-stone-400">Signed in as {user?.name || "Investor"}</div>
+              <h1 className="text-xl font-semibold text-stone-100">{NAV.find((n) => n[0] === active)?.[2]}</h1>
             </div>
             <div className="flex items-center gap-2">
               <select className="lg:hidden input" value={active} onChange={(e) => setActive(e.target.value)}>
@@ -89,7 +89,7 @@ export default function App() {
           </div>
         </header>
         <div className="mx-auto max-w-[1500px] px-4 py-6 lg:px-8">
-          {active === "dashboard" && <Dashboard api={api} setActive={setActive} />}
+          {active === "dashboard" && <Dashboard api={api} setActive={setActive} user={user} />}
           {active === "screener" && <Screener api={api} />}
           {active === "portfolio" && <Portfolio api={api} />}
           {active === "earnings" && <Earnings api={api} />}
@@ -105,8 +105,8 @@ function BrandBlock({ compact = false }) {
     <div className={compact ? "flex items-center gap-3" : "flex items-center gap-4"}>
       <img className={compact ? "brand-logo-sm" : "brand-logo"} src={logoUrl} alt="Mahiro Invest" />
       <div>
-        <div className={compact ? "text-xl font-bold" : "text-2xl font-bold leading-tight"}>Mahiro Invest</div>
-        <div className="mt-1 max-w-40 text-sm leading-snug text-zinc-500">Personal NSE quality screener</div>
+        <div className={compact ? "brand-title text-xl" : "brand-title text-2xl leading-tight"}>Mahiro Invest</div>
+        <div className="mt-1 max-w-44 text-sm leading-snug text-stone-400">Personal NSE quality screener</div>
       </div>
     </div>
   );
@@ -114,7 +114,7 @@ function BrandBlock({ compact = false }) {
 
 function AuthPage({ onAuth }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name: "Dad", email: "dad@example.com", password: "mahiro123" });
+  const [form, setForm] = useState({ name: "Investor", email: "investor@example.com", password: "mahiro123" });
   const [error, setError] = useState("");
   async function submit(e) {
     e.preventDefault();
@@ -127,8 +127,8 @@ function AuthPage({ onAuth }) {
     }
   }
   return (
-    <div className="min-h-screen grid place-items-center bg-zinc-950 px-4 text-white">
-      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
+    <div className="min-h-screen grid place-items-center bg-[#08090a] px-4 text-white">
+      <form onSubmit={submit} className="premium-card w-full max-w-md p-6 shadow-2xl">
         <div className="mb-5">
           <BrandBlock compact />
         </div>
@@ -145,21 +145,33 @@ function AuthPage({ onAuth }) {
   );
 }
 
-function Dashboard({ api, setActive }) {
+function Dashboard({ api, setActive, user }) {
   const { data: portfolio, load: loadPortfolio } = useLoad(() => api("/portfolio/"), []);
   const { data: alerts, load: loadAlerts } = useLoad(() => api("/alerts/"), []);
   const { data: earnings, load: loadEarnings } = useLoad(() => api("/earnings/upcoming?days=30"), []);
   useEffect(() => { loadPortfolio(); loadAlerts(); loadEarnings(); }, []);
   return (
     <div className="space-y-6">
-      <section className="hero-band">
-        <div className="max-w-4xl">
-          <div className="inline-flex items-center gap-2 rounded bg-white/10 px-2 py-1 text-xs font-medium text-teal-50">
-            <Sparkles size={14} /> Dad's 16-criteria workflow, now searchable
-          </div>
-          <h2 className="mt-4 text-2xl font-semibold text-white lg:text-3xl">Tune your quality filters, run the screener, then inspect every pass or fail.</h2>
+      <section className="welcome-row">
+        <div>
+          <h2 className="premium-heading">Welcome back, {user?.name || "Investor"}</h2>
+          <p className="text-stone-400">Smart filters. Sharp decisions. Cleaner investing workflow.</p>
         </div>
-        <button className="primary-button bg-white text-teal-900 hover:bg-teal-50" onClick={() => setActive("screener")}><Play size={18} /> Open Screener</button>
+        <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
+      </section>
+      <section className="hero-band">
+        <img className="hero-logo" src={logoUrl} alt="Mahiro Invest" />
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-200">
+            <Sparkles size={14} /> 16 active quality criteria
+          </div>
+          <h2 className="mt-4 text-3xl font-semibold text-stone-100">Quality Investing OS</h2>
+          <p className="mt-2 text-stone-300">Filter NSE stocks using your own rules, compare pass/fail criteria, and track opportunities before earnings.</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
+            <button className="dark-button" onClick={() => setActive("screener")}>View Opportunities</button>
+          </div>
+        </div>
       </section>
       <Stats stats={portfolio?.stats} />
       <section className="grid items-start gap-4 xl:grid-cols-[1fr_1fr]">
@@ -170,7 +182,7 @@ function Dashboard({ api, setActive }) {
           <EarningsList items={(earnings || []).filter((e) => e.is_this_week)} compact />
         </Panel>
       </section>
-      <button className="primary-button" onClick={() => setActive("screener")}><Play size={18} /> Run Dad's Screener</button>
+      <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
     </div>
   );
 }
@@ -561,15 +573,15 @@ function EarningsList({ items, compact }) {
 }
 
 function Panel({ title, icon: Icon, children }) {
-  return <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"><div className="mb-4 flex items-center gap-2 text-base font-semibold text-zinc-900"><Icon size={18} className="text-teal-800" /> {title}</div>{children}</section>;
+  return <section className="premium-card p-5"><div className="mb-4 flex items-center gap-2 text-base font-semibold text-stone-100"><Icon size={18} className="text-amber-400" /> {title}</div>{children}</section>;
 }
 
 function Metric({ label, value }) {
-  return <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"><div className="text-xs font-medium uppercase text-zinc-500">{label}</div><div className="mt-2 text-2xl font-semibold tracking-tight">{value}</div></div>;
+  return <div className="premium-card p-5"><div className="text-xs font-medium uppercase text-stone-400">{label}</div><div className="mt-2 text-2xl font-semibold tracking-tight text-stone-100">{value}</div></div>;
 }
 
 function Badge({ ok, text }) {
-  return <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${ok ? "bg-teal-100 text-teal-800" : "bg-red-100 text-red-800"}`}>{text}</span>;
+  return <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${ok ? "bg-emerald-400/15 text-emerald-300" : "bg-red-400/15 text-red-300"}`}>{text}</span>;
 }
 
 function useLoad(fn) {
