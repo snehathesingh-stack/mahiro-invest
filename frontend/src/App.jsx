@@ -182,6 +182,9 @@ function Screener({ api }) {
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sectorFilters, setSectorFilters] = useState([]);
   useEffect(() => {
     api("/personas/").then((p) => {
       setPersonas(p);
@@ -209,39 +212,76 @@ function Screener({ api }) {
     setResults(data.results);
     setSelected(data.results[0]);
   }
+  const sectors = [...new Set(results.map((r) => r.sector || "Unknown"))].sort();
+  const visibleResults = results.filter((r) => {
+    const matchesText = `${r.company_name} ${r.symbol}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || r.summary.verdict.toLowerCase() === statusFilter;
+    const matchesSector = !sectorFilters.length || sectorFilters.includes(r.sector || "Unknown");
+    return matchesText && matchesStatus && matchesSector;
+  });
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
-        <Panel title="Personal Preference Filters" icon={SlidersHorizontal}>
-          <div className="space-y-4">
+      <section className="screener-shell">
+        <aside className="filter-sidebar">
+          <div className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <SlidersHorizontal size={20} className="text-teal-800" /> Filters
+          </div>
+          <label className="field-label mb-4">
+            <span>Investor persona</span>
             <select className="input w-full" value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
               {personas.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            {draft && <PreferenceEditor persona={draft} onChange={setDraft} compact />}
-            <div className="flex gap-2">
-              <button className="secondary-button flex-1" onClick={savePersona} disabled={!draft}><Save size={18} /> Save</button>
-              <button className="primary-button flex-1" onClick={run} disabled={!personaId || loading}><Play size={18} /> {loading ? "Running" : "Run"}</button>
-            </div>
+          </label>
+          {draft && <PreferenceEditor persona={draft} onChange={setDraft} compact />}
+          <Facet title="Result View">
+            <ChipGroup
+              value={statusFilter}
+              options={[
+                ["all", "All"],
+                ["pass", "Pass"],
+                ["fail", "Fail"],
+              ]}
+              onChange={setStatusFilter}
+            />
+          </Facet>
+          <Facet title="Sector">
+            <MultiCheck options={sectors} selected={sectorFilters} onChange={setSectorFilters} />
+          </Facet>
+          <div className="sticky-actions">
+            <button className="secondary-button flex-1" onClick={savePersona} disabled={!draft}><Save size={18} /> Save</button>
+            <button className="primary-button flex-1" onClick={run} disabled={!personaId || loading}><Play size={18} /> {loading ? "Running" : "Run"}</button>
           </div>
-        </Panel>
-        <Panel title="Ranked Stock List" icon={ShieldCheck}>
-          <ResultSummary results={results} />
-          <ResultsTable results={results} onSelect={setSelected} />
-        </Panel>
+        </aside>
+        <main className="space-y-4">
+          <section className="results-toolbar">
+            <div>
+              <div className="text-xs font-semibold uppercase text-zinc-500">Ranked Stock List</div>
+              <h2 className="text-2xl font-semibold">Stocks matching your personal rules</h2>
+            </div>
+            <div className="relative min-w-72">
+              <Search className="pointer-events-none absolute left-3 top-3 text-zinc-400" size={17} />
+              <input className="input w-full pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search stock or symbol" />
+            </div>
+          </section>
+          <ResultSummary results={visibleResults} total={results.length} />
+          <Panel title="Screener Results" icon={ShieldCheck}>
+            <ResultsTable results={visibleResults} onSelect={setSelected} />
+          </Panel>
+        </main>
       </section>
       {selected && <StockDetail api={api} stock={selected} personaId={personaId} />}
     </div>
   );
 }
 
-function ResultSummary({ results }) {
+function ResultSummary({ results, total }) {
   if (!results.length) {
     return <div className="empty-state"><Search size={18} /> Adjust preferences on the left and run the screener to show stocks.</div>;
   }
   const pass = results.filter((r) => r.summary.verdict === "PASS").length;
   return (
     <div className="mb-4 grid gap-3 sm:grid-cols-3">
-      <Metric label="Universe checked" value={results.length} />
+      <Metric label="Shown" value={total ? `${results.length}/${total}` : results.length} />
       <Metric label="Passed all filters" value={pass} />
       <Metric label="Rejected" value={results.length - pass} />
     </div>
@@ -380,62 +420,128 @@ function PreferenceEditor({ persona, onChange, compact = false }) {
     onChange(next);
   };
   return (
-    <div className={compact ? "space-y-4" : "grid gap-4 lg:grid-cols-2"}>
-      <section>
-        <SectionTitle title="Hard Filters" />
-        <div className="filter-grid">
-          <NumberField label="Market Cap Min (₹ Cr)" value={filters.market_cap_cr?.min} onChange={(v) => setPath(["criteria", "hard_filters", "market_cap_cr", "min"], v)} />
-          <NumberField label="P/E Min" value={filters.pe_ratio?.min} onChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "min"], v)} />
-          <NumberField label="P/E Max" value={filters.pe_ratio?.max} onChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "max"], v)} />
-          <NumberField label="Revenue Growth Min %" value={filters.revenue_growth_yoy?.min} onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "min"], v)} />
-          <NumberField label="Revenue Years" value={filters.revenue_growth_yoy?.sustained_years} onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "sustained_years"], v)} />
-          <NumberField label="ROE Min %" value={filters.roe?.min} onChange={(v) => setPath(["criteria", "hard_filters", "roe", "min"], v)} />
-          <NumberField label="Debt/Equity Max" value={filters.debt_to_equity?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debt_to_equity", "max"], v)} step="0.1" />
-          <NumberField label="Debtor Days Max" value={filters.debtor_days?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debtor_days", "max"], v)} />
-          <NumberField label="EPS Lookback Years" value={filters.eps_trend?.lookback_years} onChange={(v) => setPath(["criteria", "hard_filters", "eps_trend", "lookback_years"], v)} />
+    <div className={compact ? "space-y-3" : "grid gap-4 lg:grid-cols-2"}>
+      <div className="space-y-3">
+        <Facet title="Size">
+          <RangeField label="Market cap above" suffix="Cr" min={1000} max={200000} step={500} value={filters.market_cap_cr?.min} onChange={(v) => setPath(["criteria", "hard_filters", "market_cap_cr", "min"], v)} />
+        </Facet>
+        <Facet title="Valuation">
+          <DualRangeField
+            label="P/E ratio"
+            minValue={filters.pe_ratio?.min}
+            maxValue={filters.pe_ratio?.max}
+            min={0}
+            max={60}
+            step={1}
+            onMinChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "min"], v)}
+            onMaxChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "max"], v)}
+          />
+        </Facet>
+        <Facet title="Growth">
+          <RangeField label="Revenue growth at least" suffix="%" min={0} max={40} value={filters.revenue_growth_yoy?.min} onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "min"], v)} />
+          <ChipGroup
+            value={String(filters.revenue_growth_yoy?.sustained_years || 3)}
+            options={[["1", "1 yr"], ["2", "2 yrs"], ["3", "3 yrs"], ["5", "5 yrs"]]}
+            onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "sustained_years"], Number(v))}
+          />
+          <ChipGroup
+            value={String(filters.eps_trend?.lookback_years || 5)}
+            options={[["3", "EPS 3 yrs"], ["5", "EPS 5 yrs"]]}
+            onChange={(v) => setPath(["criteria", "hard_filters", "eps_trend", "lookback_years"], Number(v))}
+          />
+        </Facet>
+        <Facet title="Quality">
+          <RangeField label="ROE at least" suffix="%" min={0} max={40} value={filters.roe?.min} onChange={(v) => setPath(["criteria", "hard_filters", "roe", "min"], v)} />
+          <RangeField label="Debt/equity below" min={0} max={3} step={0.1} value={filters.debt_to_equity?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debt_to_equity", "max"], v)} />
+          <RangeField label="Debtor days below" min={30} max={180} value={filters.debtor_days?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debtor_days", "max"], v)} />
+        </Facet>
+      </div>
+      <div className="space-y-3">
+        <Facet title="Mandatory Signals">
+          <CheckBox label="Profit margin must be positive" checked={filters.profit_margin?.positive !== false} onChange={(v) => setPath(["criteria", "hard_filters", "profit_margin", "positive"], v)} />
+          <CheckBox label="Cash flow must be positive and growing" checked={filters.cash_flow_from_operations?.growing_yoy !== false} onChange={(v) => setPath(["criteria", "hard_filters", "cash_flow_from_operations", "growing_yoy"], v)} />
+          <CheckBox label="FII and DII holdings both increasing" checked={filters.fii_dii_holding?.both_increasing !== false} onChange={(v) => setPath(["criteria", "hard_filters", "fii_dii_holding", "both_increasing"], v)} />
+          <CheckBox label="20 DMA must be above 200 DMA" checked={filters.moving_average_signal?.ma20_above_ma200 !== false} onChange={(v) => setPath(["criteria", "hard_filters", "moving_average_signal", "ma20_above_ma200"], v)} />
+        </Facet>
+        <Facet title="Ranking Weights">
+          <RangeField label="Revenue growth" suffix="pts" min={0} max={50} value={weights.revenue_growth_yoy} onChange={(v) => setPath(["criteria", "ranking_weights", "revenue_growth_yoy"], v)} />
+          <RangeField label="Profit margin" suffix="pts" min={0} max={50} value={weights.profit_margin} onChange={(v) => setPath(["criteria", "ranking_weights", "profit_margin"], v)} />
+          <RangeField label="EPS consistency" suffix="pts" min={0} max={50} value={weights.eps_consistency} onChange={(v) => setPath(["criteria", "ranking_weights", "eps_consistency"], v)} />
+          <RangeField label="Debt/equity" suffix="pts" min={0} max={50} value={weights.debt_to_equity} onChange={(v) => setPath(["criteria", "ranking_weights", "debt_to_equity"], v)} />
+        </Facet>
+        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+          A stock failing even one mandatory filter is rejected. Ranking points only order stocks after all hard filters pass.
         </div>
-        <div className="mt-3 space-y-2">
-          <Toggle label="Profit margin must be positive" checked={filters.profit_margin?.positive !== false} onChange={(v) => setPath(["criteria", "hard_filters", "profit_margin", "positive"], v)} />
-          <Toggle label="Cash flow must be growing" checked={filters.cash_flow_from_operations?.growing_yoy !== false} onChange={(v) => setPath(["criteria", "hard_filters", "cash_flow_from_operations", "growing_yoy"], v)} />
-          <Toggle label="FII and DII both increasing" checked={filters.fii_dii_holding?.both_increasing !== false} onChange={(v) => setPath(["criteria", "hard_filters", "fii_dii_holding", "both_increasing"], v)} />
-          <Toggle label="20 DMA above 200 DMA" checked={filters.moving_average_signal?.ma20_above_ma200 !== false} onChange={(v) => setPath(["criteria", "hard_filters", "moving_average_signal", "ma20_above_ma200"], v)} />
-        </div>
-      </section>
-      <section>
-        <SectionTitle title="Ranking Weights" />
-        <div className="filter-grid">
-          <NumberField label="Revenue Growth Points" value={weights.revenue_growth_yoy} onChange={(v) => setPath(["criteria", "ranking_weights", "revenue_growth_yoy"], v)} />
-          <NumberField label="Profit Margin Points" value={weights.profit_margin} onChange={(v) => setPath(["criteria", "ranking_weights", "profit_margin"], v)} />
-          <NumberField label="EPS Consistency Points" value={weights.eps_consistency} onChange={(v) => setPath(["criteria", "ranking_weights", "eps_consistency"], v)} />
-          <NumberField label="Debt/Equity Points" value={weights.debt_to_equity} onChange={(v) => setPath(["criteria", "ranking_weights", "debt_to_equity"], v)} />
-        </div>
-        <div className="mt-4 rounded-md bg-teal-50 p-3 text-sm text-teal-900">
-          One failed hard filter still rejects the stock. Weights only rank stocks that pass every mandatory criterion.
-        </div>
-      </section>
+      </div>
     </div>
   );
 }
 
-function SectionTitle({ title }) {
-  return <div className="mb-3 text-xs font-semibold uppercase text-zinc-500">{title}</div>;
+function Facet({ title, children }) {
+  return (
+    <section className="facet">
+      <div className="facet-title">{title}</div>
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
 }
 
-function NumberField({ label, value, onChange, step = "1" }) {
+function RangeField({ label, value, onChange, min, max, step = 1, suffix = "" }) {
+  const current = value ?? min;
   return (
-    <label className="field-label">
-      <span>{label}</span>
-      <input className="input w-full" type="number" step={step} value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))} />
+    <label className="range-field">
+      <span className="flex items-center justify-between gap-3">
+        <span>{label}</span>
+        <span className="range-value">{fmt(current)} {suffix}</span>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={current} onChange={(e) => onChange(Number(e.target.value))} />
+      <input className="input w-full" type="number" min={min} max={max} step={step} value={current} onChange={(e) => onChange(Number(e.target.value))} />
     </label>
   );
 }
 
-function Toggle({ label, checked, onChange }) {
+function DualRangeField({ label, minValue, maxValue, onMinChange, onMaxChange, min, max, step = 1 }) {
   return (
-    <label className="toggle-row">
-      <span>{label}</span>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm font-medium text-zinc-700">
+        <span>{label}</span>
+        <span className="range-value">{fmt(minValue)} - {fmt(maxValue)}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <RangeField label="Min" min={min} max={max} step={step} value={minValue} onChange={onMinChange} />
+        <RangeField label="Max" min={min} max={max} step={step} value={maxValue} onChange={onMaxChange} />
+      </div>
+    </div>
+  );
+}
+
+function CheckBox({ label, checked, onChange }) {
+  return (
+    <label className="check-row">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>{label}</span>
     </label>
+  );
+}
+
+function ChipGroup({ value, options, onChange }) {
+  return <div className="chip-group">{options.map(([id, label]) => <button key={id} type="button" className={`chip ${value === id ? "chip-active" : ""}`} onClick={() => onChange(id)}>{label}</button>)}</div>;
+}
+
+function MultiCheck({ options, selected, onChange }) {
+  if (!options.length) return <div className="text-sm text-zinc-500">Run the screener to see sectors.</div>;
+  const toggle = (option) => {
+    onChange(selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option]);
+  };
+  return (
+    <div className="multi-check">
+      {options.map((option) => (
+        <label key={option} className="check-row">
+          <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
+          <span>{option}</span>
+        </label>
+      ))}
+    </div>
   );
 }
 
