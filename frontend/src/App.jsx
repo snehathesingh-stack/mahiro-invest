@@ -14,10 +14,12 @@ import {
   Save,
   Search,
   ShieldCheck,
-  Trash2,
+  SlidersHorizontal,
+  Sparkles,
   Wallet,
 } from "lucide-react";
 import { Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import logoUrl from "../../assets/logo.jpg";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -60,8 +62,7 @@ export default function App() {
     <div className="min-h-screen bg-stone-50 text-zinc-950">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-zinc-200 bg-white lg:block">
         <div className="px-5 py-5 border-b border-zinc-200">
-          <div className="text-2xl font-bold">Mahiro Invest</div>
-          <div className="mt-1 text-sm text-zinc-500">NSE quality screener</div>
+          <BrandBlock />
         </div>
         <nav className="p-3 space-y-1">
           {NAV.map(([id, Icon, label]) => (
@@ -99,6 +100,18 @@ export default function App() {
   );
 }
 
+function BrandBlock({ compact = false }) {
+  return (
+    <div className="flex items-center gap-3">
+      <img className={compact ? "brand-logo-sm" : "brand-logo"} src={logoUrl} alt="Mahiro Invest" />
+      <div>
+        <div className={compact ? "text-xl font-bold" : "text-2xl font-bold"}>Mahiro Invest</div>
+        <div className="mt-1 text-sm text-zinc-500">Personal NSE quality screener</div>
+      </div>
+    </div>
+  );
+}
+
 function AuthPage({ onAuth }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "Dad", email: "dad@example.com", password: "mahiro123" });
@@ -115,10 +128,15 @@ function AuthPage({ onAuth }) {
   }
   return (
     <div className="min-h-screen grid place-items-center bg-zinc-950 px-4 text-white">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-900 p-6">
+      <form onSubmit={submit} className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
         <div className="mb-5">
-          <h1 className="text-2xl font-bold">Mahiro Invest</h1>
-          <p className="mt-1 text-sm text-zinc-400">Personal NSE workflow for quality investing.</p>
+          <div className="flex items-center gap-3">
+            <img className="brand-logo-sm" src={logoUrl} alt="Mahiro Invest" />
+            <div>
+              <h1 className="text-2xl font-bold">Mahiro Invest</h1>
+              <p className="mt-1 text-sm text-zinc-400">Personal NSE workflow for quality investing.</p>
+            </div>
+          </div>
         </div>
         {mode === "register" && <input className="auth-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" />}
         <input className="auth-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" />
@@ -140,6 +158,15 @@ function Dashboard({ api, setActive }) {
   useEffect(() => { loadPortfolio(); loadAlerts(); loadEarnings(); }, []);
   return (
     <div className="space-y-6">
+      <section className="hero-band">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded bg-white/10 px-2 py-1 text-xs font-medium text-teal-50">
+            <Sparkles size={14} /> Dad's 16-criteria workflow, now searchable
+          </div>
+          <h2 className="mt-4 text-3xl font-semibold text-white">Tune your quality filters, run the screener, then inspect every pass or fail.</h2>
+        </div>
+        <button className="primary-button bg-white text-teal-900 hover:bg-teal-50" onClick={() => setActive("screener")}><Play size={18} /> Open Screener</button>
+      </section>
       <Stats stats={portfolio?.stats} />
       <section className="grid gap-4 xl:grid-cols-2">
         <Panel title="Top Alerts" icon={Bell}>
@@ -157,33 +184,78 @@ function Dashboard({ api, setActive }) {
 function Screener({ api }) {
   const [personas, setPersonas] = useState([]);
   const [personaId, setPersonaId] = useState("");
+  const [draft, setDraft] = useState(null);
   const [results, setResults] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
-  useEffect(() => { api("/personas/").then((p) => { setPersonas(p); setPersonaId(p[0]?.id || ""); }); }, []);
+  useEffect(() => {
+    api("/personas/").then((p) => {
+      setPersonas(p);
+      setPersonaId(p[0]?.id || "");
+      setDraft(p[0] ? clone(p[0]) : null);
+    });
+  }, []);
+  useEffect(() => {
+    const next = personas.find((p) => String(p.id) === String(personaId));
+    setDraft(next ? clone(next) : null);
+  }, [personaId]);
+
+  async function savePersona() {
+    if (!draft) return null;
+    const saved = await api(`/personas/${draft.id}`, { method: "PUT", body: draft });
+    setPersonas((current) => current.map((p) => (p.id === saved.id ? saved : p)));
+    setDraft(clone(saved));
+    return saved;
+  }
+
   async function run() {
     setLoading(true);
-    const data = await api("/screener/run", { method: "POST", body: { persona_id: Number(personaId) } }).finally(() => setLoading(false));
+    const saved = await savePersona();
+    const data = await api("/screener/run", { method: "POST", body: { persona_id: Number(saved?.id || personaId) } }).finally(() => setLoading(false));
     setResults(data.results);
     setSelected(data.results[0]);
   }
   return (
     <div className="space-y-5">
-      <div className="toolbar">
-        <select className="input" value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
-          {personas.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <button className="primary-button" onClick={run} disabled={!personaId || loading}><Play size={18} /> {loading ? "Running" : "Run Screener"}</button>
-      </div>
-      <Panel title="Ranked Results" icon={ShieldCheck}>
-        <ResultsTable results={results} onSelect={setSelected} />
-      </Panel>
+      <section className="grid gap-4 xl:grid-cols-[380px_1fr]">
+        <Panel title="Personal Preference Filters" icon={SlidersHorizontal}>
+          <div className="space-y-4">
+            <select className="input w-full" value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
+              {personas.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            {draft && <PreferenceEditor persona={draft} onChange={setDraft} compact />}
+            <div className="flex gap-2">
+              <button className="secondary-button flex-1" onClick={savePersona} disabled={!draft}><Save size={18} /> Save</button>
+              <button className="primary-button flex-1" onClick={run} disabled={!personaId || loading}><Play size={18} /> {loading ? "Running" : "Run"}</button>
+            </div>
+          </div>
+        </Panel>
+        <Panel title="Ranked Stock List" icon={ShieldCheck}>
+          <ResultSummary results={results} />
+          <ResultsTable results={results} onSelect={setSelected} />
+        </Panel>
+      </section>
       {selected && <StockDetail api={api} stock={selected} personaId={personaId} />}
     </div>
   );
 }
 
+function ResultSummary({ results }) {
+  if (!results.length) {
+    return <div className="empty-state"><Search size={18} /> Adjust preferences on the left and run the screener to show stocks.</div>;
+  }
+  const pass = results.filter((r) => r.summary.verdict === "PASS").length;
+  return (
+    <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <Metric label="Universe checked" value={results.length} />
+      <Metric label="Passed all filters" value={pass} />
+      <Metric label="Rejected" value={results.length - pass} />
+    </div>
+  );
+}
+
 function ResultsTable({ results, onSelect }) {
+  if (!results.length) return null;
   return (
     <div className="overflow-auto">
       <table className="data-table">
@@ -274,13 +346,103 @@ function Earnings({ api }) {
 function Personas({ api }) {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(null);
-  const load = () => api("/personas/").then((p) => { setItems(p); setSelected(p[0]); });
+  const load = () => api("/personas/").then((p) => { setItems(p); setSelected(p[0] ? clone(p[0]) : null); });
   useEffect(load, []);
   async function save() {
     await api(`/personas/${selected.id}`, { method: "PUT", body: selected });
     load();
   }
-  return <section className="grid gap-4 xl:grid-cols-[320px_1fr]"><Panel title="Personas" icon={ShieldCheck}>{items.map((p) => <button key={p.id} className="nav-button" onClick={() => setSelected(p)}>{p.name}</button>)}</Panel>{selected && <Panel title="Criteria Editor" icon={Edit3}><input className="input mb-3 w-full" value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} /><textarea className="input h-96 w-full font-mono text-xs" value={JSON.stringify(selected.criteria, null, 2)} onChange={(e) => setSelected({ ...selected, criteria: JSON.parse(e.target.value || "{}") })} /><button className="primary-button mt-3" onClick={save}><Save size={18} /> Save</button></Panel>}</section>;
+  return (
+    <section className="grid gap-4 xl:grid-cols-[320px_1fr]">
+      <Panel title="Personas" icon={ShieldCheck}>
+        <div className="space-y-2">
+          {items.map((p) => <button key={p.id} className="nav-button" onClick={() => setSelected(clone(p))}>{p.name}</button>)}
+        </div>
+      </Panel>
+      {selected && (
+        <Panel title="Preference Builder" icon={Edit3}>
+          <input className="input mb-3 w-full" value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} />
+          <textarea className="input mb-4 h-20 w-full" value={selected.description || ""} onChange={(e) => setSelected({ ...selected, description: e.target.value })} />
+          <PreferenceEditor persona={selected} onChange={setSelected} />
+          <button className="primary-button mt-4" onClick={save}><Save size={18} /> Save Preferences</button>
+        </Panel>
+      )}
+    </section>
+  );
+}
+
+function PreferenceEditor({ persona, onChange, compact = false }) {
+  const criteria = persona.criteria || {};
+  const filters = criteria.hard_filters || {};
+  const weights = criteria.ranking_weights || {};
+  const setPath = (path, value) => {
+    const next = clone(persona);
+    let cursor = next;
+    path.slice(0, -1).forEach((key) => {
+      cursor[key] = cursor[key] || {};
+      cursor = cursor[key];
+    });
+    cursor[path[path.length - 1]] = value;
+    onChange(next);
+  };
+  return (
+    <div className={compact ? "space-y-4" : "grid gap-4 lg:grid-cols-2"}>
+      <section>
+        <SectionTitle title="Hard Filters" />
+        <div className="filter-grid">
+          <NumberField label="Market Cap Min (₹ Cr)" value={filters.market_cap_cr?.min} onChange={(v) => setPath(["criteria", "hard_filters", "market_cap_cr", "min"], v)} />
+          <NumberField label="P/E Min" value={filters.pe_ratio?.min} onChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "min"], v)} />
+          <NumberField label="P/E Max" value={filters.pe_ratio?.max} onChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "max"], v)} />
+          <NumberField label="Revenue Growth Min %" value={filters.revenue_growth_yoy?.min} onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "min"], v)} />
+          <NumberField label="Revenue Years" value={filters.revenue_growth_yoy?.sustained_years} onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "sustained_years"], v)} />
+          <NumberField label="ROE Min %" value={filters.roe?.min} onChange={(v) => setPath(["criteria", "hard_filters", "roe", "min"], v)} />
+          <NumberField label="Debt/Equity Max" value={filters.debt_to_equity?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debt_to_equity", "max"], v)} step="0.1" />
+          <NumberField label="Debtor Days Max" value={filters.debtor_days?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debtor_days", "max"], v)} />
+          <NumberField label="EPS Lookback Years" value={filters.eps_trend?.lookback_years} onChange={(v) => setPath(["criteria", "hard_filters", "eps_trend", "lookback_years"], v)} />
+        </div>
+        <div className="mt-3 space-y-2">
+          <Toggle label="Profit margin must be positive" checked={filters.profit_margin?.positive !== false} onChange={(v) => setPath(["criteria", "hard_filters", "profit_margin", "positive"], v)} />
+          <Toggle label="Cash flow must be growing" checked={filters.cash_flow_from_operations?.growing_yoy !== false} onChange={(v) => setPath(["criteria", "hard_filters", "cash_flow_from_operations", "growing_yoy"], v)} />
+          <Toggle label="FII and DII both increasing" checked={filters.fii_dii_holding?.both_increasing !== false} onChange={(v) => setPath(["criteria", "hard_filters", "fii_dii_holding", "both_increasing"], v)} />
+          <Toggle label="20 DMA above 200 DMA" checked={filters.moving_average_signal?.ma20_above_ma200 !== false} onChange={(v) => setPath(["criteria", "hard_filters", "moving_average_signal", "ma20_above_ma200"], v)} />
+        </div>
+      </section>
+      <section>
+        <SectionTitle title="Ranking Weights" />
+        <div className="filter-grid">
+          <NumberField label="Revenue Growth Points" value={weights.revenue_growth_yoy} onChange={(v) => setPath(["criteria", "ranking_weights", "revenue_growth_yoy"], v)} />
+          <NumberField label="Profit Margin Points" value={weights.profit_margin} onChange={(v) => setPath(["criteria", "ranking_weights", "profit_margin"], v)} />
+          <NumberField label="EPS Consistency Points" value={weights.eps_consistency} onChange={(v) => setPath(["criteria", "ranking_weights", "eps_consistency"], v)} />
+          <NumberField label="Debt/Equity Points" value={weights.debt_to_equity} onChange={(v) => setPath(["criteria", "ranking_weights", "debt_to_equity"], v)} />
+        </div>
+        <div className="mt-4 rounded-md bg-teal-50 p-3 text-sm text-teal-900">
+          One failed hard filter still rejects the stock. Weights only rank stocks that pass every mandatory criterion.
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SectionTitle({ title }) {
+  return <div className="mb-3 text-xs font-semibold uppercase text-zinc-500">{title}</div>;
+}
+
+function NumberField({ label, value, onChange, step = "1" }) {
+  return (
+    <label className="field-label">
+      <span>{label}</span>
+      <input className="input w-full" type="number" step={step} value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))} />
+    </label>
+  );
+}
+
+function Toggle({ label, checked, onChange }) {
+  return (
+    <label className="toggle-row">
+      <span>{label}</span>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
+  );
 }
 
 function Stats({ stats }) {
@@ -338,4 +500,8 @@ function fmt(v) {
 
 function money(v) {
   return `₹${fmt(v)}`;
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
 }
