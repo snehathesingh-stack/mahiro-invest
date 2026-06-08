@@ -8,7 +8,7 @@ DAD_PERSONA_NAME = QUALITY_PERSONA_NAME
 QUALITY_PERSONA_CRITERIA = {
     "hard_filters": {
         "market_cap_cr": {"min": 5000},
-        "pe_ratio": {"min": 10, "max": 25},
+        "pe_ratio": {"enabled": True, "min": 10, "max": 25},
         "eps_trend": {"lookback_years": 5, "must_trend_up": True},
         "revenue_growth_yoy": {"min": 10, "sustained_years": 3},
         "profit_margin": {"positive": True},
@@ -97,6 +97,10 @@ def sample_fundamentals(symbol: str) -> dict:
             },
         },
     }
+
+
+def fallback_equity_universe() -> list[tuple[str, str, str]]:
+    return NIFTY_500_SEED
 
 
 def sample_earnings(days: int = 90) -> list[dict]:

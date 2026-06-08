@@ -36,6 +36,7 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
     market_cap_min = _num(market_cap_rule.get("min")) or 5000
     pe_min = _num(pe_rule.get("min")) or 10
     pe_max = _num(pe_rule.get("max")) or 25
+    pe_enabled = pe_rule.get("enabled", True)
     eps_lookback = int(eps_rule.get("lookback_years", 5))
     revenue_min = _num(revenue_rule.get("min")) or 10
     revenue_years = int(revenue_rule.get("sustained_years", 3))
@@ -52,7 +53,6 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
     dii_history = _history(raw, "dii_history")
     evaluations = [
         _eval("Market Cap", market_cap_cr is not None and market_cap_cr > market_cap_min, market_cap_cr, f"> ₹{market_cap_min:,.0f} Cr"),
-        _eval("P/E Ratio", pe is not None and pe_min <= pe <= pe_max, pe, f"{pe_min:g} to {pe_max:g}"),
         _eval(
             "EPS Increasing",
             len(eps_history) >= eps_lookback and eps_history[-1] > eps_history[-eps_lookback],
@@ -86,6 +86,8 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
             "20DMA above 200DMA",
         ),
     ]
+    if pe_enabled:
+        evaluations.insert(1, _eval("P/E Ratio", pe is not None and pe_min <= pe <= pe_max, pe, f"{pe_min:g} to {pe_max:g}"))
     fail_count = sum(1 for item in evaluations if item["status"] == "fail")
     score = weighted_score(snapshot, raw, criteria)
     return {

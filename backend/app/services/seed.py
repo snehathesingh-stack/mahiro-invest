@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from app.models import FundamentalSnapshot, Holding, Persona, Stock, User, Watchlist
-from app.services.defaults import NIFTY_500_SEED, QUALITY_PERSONA_CRITERIA, QUALITY_PERSONA_NAME, sample_fundamentals
+from app.services.defaults import QUALITY_PERSONA_CRITERIA, QUALITY_PERSONA_NAME, sample_fundamentals
+from app.services.nse_universe import fetch_nse_equity_universe
 from app.services.security import hash_password
 
 
@@ -31,7 +32,7 @@ def seed_defaults(db) -> None:
                 )
             )
 
-    for symbol, name, sector in NIFTY_500_SEED:
+    for symbol, name, sector in fetch_nse_equity_universe():
         stock = db.query(Stock).filter(Stock.symbol == symbol).first()
         sample = sample_fundamentals(symbol)
         if not stock:

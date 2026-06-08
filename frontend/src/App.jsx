@@ -28,7 +28,7 @@ const COLORS = ["#0f766e", "#b45309", "#2563eb", "#be123c", "#4d7c0f", "#7c3aed"
 const DEFAULT_QUALITY_CRITERIA = {
   hard_filters: {
     market_cap_cr: { min: 5000 },
-    pe_ratio: { min: 10, max: 25 },
+    pe_ratio: { enabled: true, min: 10, max: 25 },
     eps_trend: { lookback_years: 5, must_trend_up: true },
     revenue_growth_yoy: { min: 10, sustained_years: 3 },
     profit_margin: { positive: true },
@@ -40,12 +40,7 @@ const DEFAULT_QUALITY_CRITERIA = {
     moving_average_signal: { ma20_above_ma200: true },
     dividend_yield: { nice_to_have: true },
   },
-  ranking_weights: {
-    revenue_growth_yoy: 30,
-    profit_margin: 25,
-    eps_consistency: 25,
-    debt_to_equity: 20,
-  },
+  ranking_weights: {},
   portfolio_alerts: { on_hard_filter_violation: "SELL IMMEDIATELY" },
   earnings_strategy: { buy_decisions: "before_earnings", post_earnings: "rerun_persona" },
 };
@@ -484,7 +479,6 @@ function Personas({ api }) {
 function PreferenceEditor({ persona, onChange, compact = false }) {
   const criteria = persona.criteria || {};
   const filters = criteria.hard_filters || {};
-  const weights = criteria.ranking_weights || {};
   const setPath = (path, value) => {
     const next = clone(persona);
     let cursor = next;
@@ -502,6 +496,7 @@ function PreferenceEditor({ persona, onChange, compact = false }) {
           <RangeField label="Market cap above" suffix="Cr" min={1000} max={200000} step={500} value={filters.market_cap_cr?.min} onChange={(v) => setPath(["criteria", "hard_filters", "market_cap_cr", "min"], v)} />
         </Facet>
         <Facet title="Valuation">
+          <CheckBox label="Use P/E valuation filter" checked={filters.pe_ratio?.enabled !== false} onChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "enabled"], v)} />
           <DualRangeField
             label="P/E ratio"
             minValue={filters.pe_ratio?.min}
@@ -539,14 +534,8 @@ function PreferenceEditor({ persona, onChange, compact = false }) {
           <CheckBox label="FII and DII holdings both increasing" checked={filters.fii_dii_holding?.both_increasing !== false} onChange={(v) => setPath(["criteria", "hard_filters", "fii_dii_holding", "both_increasing"], v)} />
           <CheckBox label="20 DMA must be above 200 DMA" checked={filters.moving_average_signal?.ma20_above_ma200 !== false} onChange={(v) => setPath(["criteria", "hard_filters", "moving_average_signal", "ma20_above_ma200"], v)} />
         </Facet>
-        <Facet title="Ranking Weights">
-          <RangeField label="Revenue growth" suffix="pts" min={0} max={50} value={weights.revenue_growth_yoy} onChange={(v) => setPath(["criteria", "ranking_weights", "revenue_growth_yoy"], v)} />
-          <RangeField label="Profit margin" suffix="pts" min={0} max={50} value={weights.profit_margin} onChange={(v) => setPath(["criteria", "ranking_weights", "profit_margin"], v)} />
-          <RangeField label="EPS consistency" suffix="pts" min={0} max={50} value={weights.eps_consistency} onChange={(v) => setPath(["criteria", "ranking_weights", "eps_consistency"], v)} />
-          <RangeField label="Debt/equity" suffix="pts" min={0} max={50} value={weights.debt_to_equity} onChange={(v) => setPath(["criteria", "ranking_weights", "debt_to_equity"], v)} />
-        </Facet>
-        <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-          A stock failing even one mandatory filter is rejected. Ranking points only order stocks after all hard filters pass.
+        <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
+          Every checked filter is mandatory. If a stock fails even one selected rule, it is rejected.
         </div>
       </div>
     </div>

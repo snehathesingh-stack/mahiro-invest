@@ -34,7 +34,7 @@ def run_screener(payload: ScreenerRun, db: Session = Depends(get_db), user: User
         wanted = {s.upper() for s in payload.symbols}
         stocks = [s for s in stocks if s.symbol in wanted]
     results = []
-    for stock in stocks[:100]:
+    for stock in stocks:
         snap = _latest(db, stock.id)
         if not snap:
             stock, snap = persist_stock_data(db, stock.symbol)
