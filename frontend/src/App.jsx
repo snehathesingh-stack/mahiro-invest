@@ -25,6 +25,30 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:8000`;
 const COLORS = ["#0f766e", "#b45309", "#2563eb", "#be123c", "#4d7c0f", "#7c3aed"];
+const DEFAULT_QUALITY_CRITERIA = {
+  hard_filters: {
+    market_cap_cr: { min: 5000 },
+    pe_ratio: { min: 10, max: 25 },
+    eps_trend: { lookback_years: 5, must_trend_up: true },
+    revenue_growth_yoy: { min: 10, sustained_years: 3 },
+    profit_margin: { positive: true },
+    debt_to_equity: { max: 1 },
+    roe: { min: 15 },
+    cash_flow_from_operations: { positive: true, growing_yoy: true },
+    debtor_days: { max: 100 },
+    fii_dii_holding: { both_increasing: true },
+    moving_average_signal: { ma20_above_ma200: true },
+    dividend_yield: { nice_to_have: true },
+  },
+  ranking_weights: {
+    revenue_growth_yoy: 30,
+    profit_margin: 25,
+    eps_consistency: 25,
+    debt_to_equity: 20,
+  },
+  portfolio_alerts: { on_hard_filter_violation: "SELL IMMEDIATELY" },
+  earnings_strategy: { buy_decisions: "before_earnings", post_earnings: "rerun_persona" },
+};
 const NAV = [
   ["dashboard", BarChart3, "Dashboard"],
   ["screener", Search, "Screener"],
@@ -392,25 +416,65 @@ function Earnings({ api }) {
 function Personas({ api }) {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(null);
-  const load = () => api("/personas/").then((p) => { setItems(p); setSelected(p[0] ? clone(p[0]) : null); });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const load = () => {
+    setLoading(true);
+    setError("");
+    api("/personas/")
+      .then((p) => {
+        setItems(p);
+        setSelected((current) => {
+          if (!p.length) return null;
+          const same = current && p.find((item) => item.id === current.id);
+          return clone(same || p[0]);
+        });
+      })
+      .catch((err) => setError(err.message || "Could not load personas"))
+      .finally(() => setLoading(false));
+  };
   useEffect(load, []);
   async function save() {
+    if (!selected) return;
     await api(`/personas/${selected.id}`, { method: "PUT", body: selected });
     load();
   }
+  function resetCriteria() {
+    if (!selected) return;
+    setSelected({ ...selected, criteria: clone(DEFAULT_QUALITY_CRITERIA) });
+  }
+  if (loading) return <Panel title="Preference Studio" icon={Edit3}><div className="empty-state">Loading persona preferences...</div></Panel>;
+  if (error) return <Panel title="Preference Studio" icon={Edit3}><div className="rounded-md border border-red-400/30 bg-red-400/10 p-4 text-red-200">{error}</div></Panel>;
   return (
-    <section className="grid gap-4 xl:grid-cols-[320px_1fr]">
-      <Panel title="Personas" icon={ShieldCheck}>
-        <div className="space-y-2">
-          {items.map((p) => <button key={p.id} className="nav-button" onClick={() => setSelected(clone(p))}>{p.name}</button>)}
+    <section className="grid gap-5 xl:grid-cols-[340px_1fr]">
+      <Panel title="Investor Profiles" icon={ShieldCheck}>
+        <div className="space-y-3">
+          {items.map((p) => (
+            <button key={p.id} className={`persona-card ${selected?.id === p.id ? "persona-card-active" : ""}`} onClick={() => setSelected(clone(p))}>
+              <span className="font-semibold">{p.name}</span>
+              <span className="mt-1 block text-xs text-stone-400">{p.description || "Custom rule set"}</span>
+            </button>
+          ))}
+          {!items.length && <div className="empty-state">No personas found. Register or reload seed data.</div>}
         </div>
       </Panel>
       {selected && (
-        <Panel title="Preference Builder" icon={Edit3}>
-          <input className="input mb-3 w-full" value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} />
-          <textarea className="input mb-4 h-20 w-full" value={selected.description || ""} onChange={(e) => setSelected({ ...selected, description: e.target.value })} />
+        <Panel title="Preference Studio" icon={Edit3}>
+          <div className="mb-5 grid gap-3 md:grid-cols-[1fr_2fr]">
+            <label className="field-label">
+              <span>Profile name</span>
+              <input className="input w-full" value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} />
+            </label>
+            <label className="field-label">
+              <span>Description</span>
+              <input className="input w-full" value={selected.description || ""} onChange={(e) => setSelected({ ...selected, description: e.target.value })} />
+            </label>
+          </div>
           <PreferenceEditor persona={selected} onChange={setSelected} />
-          <button className="primary-button mt-4" onClick={save}><Save size={18} /> Save Preferences</button>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button className="gold-button" onClick={save}><Save size={18} /> Save Preferences</button>
+            <button className="dark-button" onClick={resetCriteria}>Reset Quality Defaults</button>
+          </div>
         </Panel>
       )}
     </section>
