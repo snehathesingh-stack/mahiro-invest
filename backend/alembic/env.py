@@ -11,8 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.config import settings
 from app.database import Base
-from app.models import stock, persona, holding, watchlist  # noqa: F401 — register models
-
+from app.models import user, stock, persona, holding, watchlist, fundamental_snapshot  # noqa: F401 — register models
 config = context.config
 
 # Override the URL with our settings

@@ -1,45 +1,63 @@
-"""
-Persona endpoints — manage investor personas (rule sets that define screening criteria).
-"""
 from __future__ import annotations
 
-import logging
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Persona
+from app.models import Persona, User
+from app.serializers import persona_dict
+from app.services.security import get_current_user
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(prefix="/api/personas", tags=["personas"])
-
-
-def _persona_to_dict(p: Persona) -> dict:
-    return {
-        "id": p.id,
-        "name": p.name,
-        "owner": p.owner,
-        "style": p.style,
-        "config": p.config,
-        "created_at": p.created_at.isoformat() if p.created_at else None,
-        "updated_at": p.updated_at.isoformat() if p.updated_at else None,
-    }
+router = APIRouter(prefix="/personas", tags=["personas"])
 
 
-@router.get("")
-def list_personas(owner: str | None = None, db: Session = Depends(get_db)) -> list[dict]:
-    """List all personas, optionally filtered by owner."""
-    q = db.query(Persona)
-    if owner:
-        q = q.filter(Persona.owner == owner)
-    return [_persona_to_dict(p) for p in q.all()]
+class PersonaPayload(BaseModel):
+    name: str
+    description: str | None = None
+    criteria: dict
+
+
+@router.get("/")
+def list_personas(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[dict]:
+    return [persona_dict(p) for p in db.query(Persona).filter(Persona.user_id == user.id).all()]
 
 
 @router.get("/{persona_id}")
-def get_persona(persona_id: int, db: Session = Depends(get_db)) -> dict:
-    """Get one persona by id."""
-    p = db.query(Persona).filter(Persona.id == persona_id).first()
+def get_persona(persona_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    p = db.query(Persona).filter(Persona.id == persona_id, Persona.user_id == user.id).first()
     if not p:
         raise HTTPException(status_code=404, detail=f"Persona {persona_id} not found")
-    return _persona_to_dict(p)
+    return persona_dict(p)
+
+
+@router.post("/")
+def create_persona(payload: PersonaPayload, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    persona = Persona(user_id=user.id, name=payload.name, description=payload.description, criteria=payload.criteria)
+    db.add(persona)
+    db.commit()
+    db.refresh(persona)
+    return persona_dict(persona)
+
+
+@router.put("/{persona_id}")
+def update_persona(persona_id: int, payload: PersonaPayload, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    persona = db.query(Persona).filter(Persona.id == persona_id, Persona.user_id == user.id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    persona.name = payload.name
+    persona.description = payload.description
+    persona.criteria = payload.criteria
+    db.commit()
+    db.refresh(persona)
+    return persona_dict(persona)
+
+
+@router.delete("/{persona_id}")
+def delete_persona(persona_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    persona = db.query(Persona).filter(Persona.id == persona_id, Persona.user_id == user.id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    db.delete(persona)
+    db.commit()
+    return {"ok": True}
