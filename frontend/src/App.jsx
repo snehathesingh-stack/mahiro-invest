@@ -310,6 +310,19 @@ function Screener({ api }) {
     await api("/portfolio/", { method: "POST", body: { symbol: stock.symbol, quantity: 1, avg_buy_price: stock.last_price || 0 } });
     setMessage(`${stock.symbol} added to portfolio with quantity 1.`);
   }
+  async function refreshUniverse() {
+    setLoading(true);
+    setMessage("Refreshing full NSE universe...");
+    try {
+      const summary = await api("/stocks/refresh-universe", { method: "POST" });
+      setMessage(`Loaded ${summary.stock_count} NSE symbols. Running screener again...`);
+      await run();
+    } catch (err) {
+      setMessage(err.message || "Could not refresh NSE universe.");
+    } finally {
+      setLoading(false);
+    }
+  }
   const sectors = [...new Set(results.map((r) => r.sector || "Unknown"))].sort();
   const visibleResults = results.filter((r) => {
     const matchesText = `${r.company_name} ${r.symbol}`.toLowerCase().includes(searchTerm.toLowerCase());
@@ -372,6 +385,7 @@ function Screener({ api }) {
                 {SORT_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
               </select>
               <button className="icon-button" title="Toggle sort direction" onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}><ArrowUpDown size={17} /></button>
+              <button className="secondary-button" onClick={refreshUniverse} disabled={loading}>Refresh NSE Universe</button>
               <button className="secondary-button" onClick={saveScreen} disabled={!visibleResults.length}><Bookmark size={17} /> Save Screen</button>
             </div>
           </section>

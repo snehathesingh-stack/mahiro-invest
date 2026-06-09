@@ -6,6 +6,35 @@ from app.services.nse_universe import fetch_nse_equity_universe
 from app.services.security import hash_password
 
 
+def sync_stock_universe(db) -> dict:
+    added = 0
+    existing = 0
+    total = 0
+    for symbol, name, sector in fetch_nse_equity_universe():
+        total += 1
+        stock = db.query(Stock).filter(Stock.symbol == symbol).first()
+        sample = sample_fundamentals(symbol)
+        if not stock:
+            stock = Stock(
+                symbol=symbol,
+                company_name=name,
+                sector=sector,
+                market_cap=sample["market_cap_cr"] * 10_000_000,
+                last_price=sample["last_price"],
+            )
+            db.add(stock)
+            db.flush()
+            added += 1
+        else:
+            existing += 1
+            stock.company_name = name or stock.company_name
+            stock.sector = sector or stock.sector
+        if not db.query(FundamentalSnapshot).filter(FundamentalSnapshot.stock_id == stock.id).first():
+            db.add(FundamentalSnapshot(stock_id=stock.id, source="sample", **sample["snapshot"]))
+    db.commit()
+    return {"total": total, "added": added, "existing": existing}
+
+
 def seed_defaults(db) -> None:
     demo_users = [
         ("investor@example.com", "Investor"),
@@ -32,21 +61,7 @@ def seed_defaults(db) -> None:
                 )
             )
 
-    for symbol, name, sector in fetch_nse_equity_universe():
-        stock = db.query(Stock).filter(Stock.symbol == symbol).first()
-        sample = sample_fundamentals(symbol)
-        if not stock:
-            stock = Stock(
-                symbol=symbol,
-                company_name=name,
-                sector=sector,
-                market_cap=sample["market_cap_cr"] * 10_000_000,
-                last_price=sample["last_price"],
-            )
-            db.add(stock)
-            db.flush()
-        if not db.query(FundamentalSnapshot).filter(FundamentalSnapshot.stock_id == stock.id).first():
-            db.add(FundamentalSnapshot(stock_id=stock.id, source="sample", **sample["snapshot"]))
+    sync_stock_universe(db)
 
     investor = users[0]
     demo_holds = [("HINDUNILVR.NS", 8, 2320), ("INFY.NS", 12, 1420), ("SBIN.NS", 20, 620)]

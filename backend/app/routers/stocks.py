@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import FundamentalSnapshot, Stock
 from app.serializers import snapshot_dict, stock_dict
 from app.services.data_fetcher import fetch_stock_data
+from app.services.seed import sync_stock_universe
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 
@@ -37,6 +38,13 @@ def persist_stock_data(db: Session, symbol: str):
 @router.get("/")
 def list_stocks(db: Session = Depends(get_db)) -> list[dict]:
     return [stock_dict(s, latest_snapshot(db, s.id)) for s in db.query(Stock).order_by(Stock.symbol).all()]
+
+
+@router.post("/refresh-universe")
+def refresh_universe(db: Session = Depends(get_db)) -> dict:
+    summary = sync_stock_universe(db)
+    count = db.query(Stock).count()
+    return {**summary, "stock_count": count}
 
 
 @router.get("/{symbol}")
