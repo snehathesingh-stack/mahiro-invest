@@ -8,7 +8,6 @@ DAD_PERSONA_NAME = QUALITY_PERSONA_NAME
 QUALITY_PERSONA_CRITERIA = {
     "hard_filters": {
         "market_cap_cr": {"min": 5000},
-        "pe_ratio": {"enabled": True, "min": 10, "max": 25},
         "eps_trend": {"lookback_years": 5, "must_trend_up": True},
         "revenue_growth_yoy": {"min": 10, "sustained_years": 3},
         "profit_margin": {"positive": True},
@@ -16,7 +15,9 @@ QUALITY_PERSONA_CRITERIA = {
         "roe": {"min": 15},
         "cash_flow_from_operations": {"positive": True, "growing_yoy": True},
         "debtor_days": {"max": 100},
-        "fii_dii_holding": {"both_increasing": True},
+        "fii_holding_pct": {"min": 0, "max": 100},
+        "dii_holding_pct": {"min": 0, "max": 100},
+        "public_holding_pct": {"min": 0, "max": 100},
         "moving_average_signal": {"ma20_above_ma200": True},
         "dividend_yield": {"nice_to_have": True},
     },
@@ -40,9 +41,9 @@ def persona_preset(name: str) -> tuple[str, str, dict]:
             "hard_filters": {
                 **QUALITY_PERSONA_CRITERIA["hard_filters"],
                 "market_cap_cr": {"min": 20000},
-                "pe_ratio": {"enabled": True, "min": 8, "max": 22},
                 "debt_to_equity": {"max": 0.6},
                 "roe": {"min": 18},
+                "public_holding_pct": {"min": 0, "max": 45},
             },
         },
         "Growth": {
@@ -50,7 +51,6 @@ def persona_preset(name: str) -> tuple[str, str, dict]:
             "hard_filters": {
                 **QUALITY_PERSONA_CRITERIA["hard_filters"],
                 "market_cap_cr": {"min": 2000},
-                "pe_ratio": {"enabled": False, "min": 0, "max": 60},
                 "revenue_growth_yoy": {"min": 18, "sustained_years": 2},
                 "roe": {"min": 12},
             },
@@ -59,16 +59,15 @@ def persona_preset(name: str) -> tuple[str, str, dict]:
             **QUALITY_PERSONA_CRITERIA,
             "hard_filters": {
                 **QUALITY_PERSONA_CRITERIA["hard_filters"],
-                "pe_ratio": {"enabled": True, "min": 6, "max": 28},
                 "dividend_yield": {"nice_to_have": False, "min": 1.5},
                 "debt_to_equity": {"max": 0.8},
+                "public_holding_pct": {"min": 0, "max": 60},
             },
         },
         "Momentum": {
             **QUALITY_PERSONA_CRITERIA,
             "hard_filters": {
                 **QUALITY_PERSONA_CRITERIA["hard_filters"],
-                "pe_ratio": {"enabled": False, "min": 0, "max": 80},
                 "moving_average_signal": {"ma20_above_ma200": True},
                 "revenue_growth_yoy": {"min": 12, "sustained_years": 1},
             },
@@ -78,7 +77,6 @@ def persona_preset(name: str) -> tuple[str, str, dict]:
             "hard_filters": {
                 **QUALITY_PERSONA_CRITERIA["hard_filters"],
                 "market_cap_cr": {"min": 10000},
-                "pe_ratio": {"enabled": True, "min": 5, "max": 30},
                 "debtor_days": {"max": 100},
                 "debt_to_equity": {"max": 2.5},
                 "roe": {"min": 12},
@@ -143,6 +141,7 @@ def sample_fundamentals(symbol: str) -> dict:
             "debtor_days": 45 + (base % 80),
             "fii_holding_pct": 12 + quality,
             "dii_holding_pct": 8 + quality,
+            "public_holding_pct": max(0, 72 - quality * 3),
             "moving_avg_20d": round(ma20, 2),
             "moving_avg_200d": round(ma200, 2),
             "dividend_yield": round((base % 40) / 10, 2),

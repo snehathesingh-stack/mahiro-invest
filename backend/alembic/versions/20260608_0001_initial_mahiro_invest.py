@@ -87,6 +87,7 @@ def upgrade() -> None:
         sa.Column("debtor_days", sa.Numeric(10, 2)),
         sa.Column("fii_holding_pct", sa.Numeric(10, 2)),
         sa.Column("dii_holding_pct", sa.Numeric(10, 2)),
+        sa.Column("public_holding_pct", sa.Numeric(10, 2)),
         sa.Column("moving_avg_20d", sa.Numeric(15, 2)),
         sa.Column("moving_avg_200d", sa.Numeric(15, 2)),
         sa.Column("dividend_yield", sa.Numeric(10, 2)),

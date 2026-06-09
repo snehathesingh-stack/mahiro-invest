@@ -23,7 +23,6 @@ def _eval(name: str, passed: bool | None, value: Any, rule: str, reason: str | N
 def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
     filters = criteria.get("hard_filters", {}) if criteria else {}
     market_cap_rule = filters.get("market_cap_cr", {})
-    pe_rule = filters.get("pe_ratio", {})
     eps_rule = filters.get("eps_trend", {})
     revenue_rule = filters.get("revenue_growth_yoy", {})
     margin_rule = filters.get("profit_margin", {})
@@ -31,26 +30,25 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
     roe_rule = filters.get("roe", {})
     cash_rule = filters.get("cash_flow_from_operations", {})
     debtor_rule = filters.get("debtor_days", {})
-    holding_rule = filters.get("fii_dii_holding", {})
+    fii_rule = filters.get("fii_holding_pct", {})
+    dii_rule = filters.get("dii_holding_pct", {})
+    public_rule = filters.get("public_holding_pct", {})
     ma_rule = filters.get("moving_average_signal", {})
     market_cap_min = _num(market_cap_rule.get("min")) or 5000
-    pe_min = _num(pe_rule.get("min")) or 10
-    pe_max = _num(pe_rule.get("max")) or 25
-    pe_enabled = pe_rule.get("enabled", True)
     eps_lookback = int(eps_rule.get("lookback_years", 5))
     revenue_min = _num(revenue_rule.get("min")) or 10
     revenue_years = int(revenue_rule.get("sustained_years", 3))
     debt_max = _num(debt_rule.get("max")) or 1.0
     roe_min = _num(roe_rule.get("min")) or 15
     debtor_max = _num(debtor_rule.get("max")) or 100
+    fii_min, fii_max = _num(fii_rule.get("min")) or 0, _num(fii_rule.get("max")) or 100
+    dii_min, dii_max = _num(dii_rule.get("min")) or 0, _num(dii_rule.get("max")) or 100
+    public_min, public_max = _num(public_rule.get("min")) or 0, _num(public_rule.get("max")) or 100
     raw = snapshot.raw_json or {}
     market_cap_cr = stock.market_cap_cr
-    pe = _num(snapshot.pe_ratio)
     eps_history = _history(raw, "eps_history")
     revenue_history = _history(raw, "revenue_growth_history")
     cfo_history = _history(raw, "cash_flow_history")
-    fii_history = _history(raw, "fii_history")
-    dii_history = _history(raw, "dii_history")
     evaluations = [
         _eval("Market Cap", market_cap_cr is not None and market_cap_cr > market_cap_min, market_cap_cr, f"> ₹{market_cap_min:,.0f} Cr"),
         _eval(
@@ -75,8 +73,6 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
             "positive and growing YoY",
         ),
         _eval("Debtor Days", _num(snapshot.debtor_days) is not None and _num(snapshot.debtor_days) < debtor_max, _num(snapshot.debtor_days), f"< {debtor_max:g} for all sectors"),
-        _eval("FII Holding Trend", len(fii_history) >= 2 and (not holding_rule.get("both_increasing", True) or fii_history[-1] > fii_history[0]), fii_history, "increasing"),
-        _eval("DII Holding Trend", len(dii_history) >= 2 and (not holding_rule.get("both_increasing", True) or dii_history[-1] > dii_history[0]), dii_history, "increasing"),
         _eval(
             "MA Signal",
             _num(snapshot.moving_avg_20d) is not None
@@ -86,8 +82,12 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
             "20DMA above 200DMA",
         ),
     ]
-    if pe_enabled:
-        evaluations.insert(1, _eval("P/E Ratio", pe is not None and pe_min <= pe <= pe_max, pe, f"{pe_min:g} to {pe_max:g}"))
+    if "fii_holding_pct" in filters:
+        evaluations.insert(-1, _eval("FII Holding", _in_range(_num(snapshot.fii_holding_pct), fii_min, fii_max), _num(snapshot.fii_holding_pct), f"{fii_min:g}% to {fii_max:g}%"))
+    if "dii_holding_pct" in filters:
+        evaluations.insert(-1, _eval("DII Holding", _in_range(_num(snapshot.dii_holding_pct), dii_min, dii_max), _num(snapshot.dii_holding_pct), f"{dii_min:g}% to {dii_max:g}%"))
+    if "public_holding_pct" in filters:
+        evaluations.insert(-1, _eval("Public Holding", _in_range(_num(getattr(snapshot, "public_holding_pct", None)), public_min, public_max), _num(getattr(snapshot, "public_holding_pct", None)), f"{public_min:g}% to {public_max:g}%"))
     fail_count = sum(1 for item in evaluations if item["status"] == "fail")
     score = weighted_score(snapshot, raw, criteria)
     return {
@@ -95,6 +95,12 @@ def evaluate_stock(stock, snapshot, criteria: dict) -> dict:
         "summary": {"pass": len(evaluations) - fail_count, "fail": fail_count, "verdict": "PASS" if fail_count == 0 else "FAIL"},
         "score": score if fail_count == 0 else 0,
     }
+
+
+def _in_range(value: float | None, minimum: float, maximum: float) -> bool | None:
+    if value is None:
+        return None
+    return minimum <= value <= maximum
 
 
 def weighted_score(snapshot, raw: dict, criteria: dict) -> float:

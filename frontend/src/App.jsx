@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Edit3,
   Eye,
+  ExternalLink,
   ListPlus,
   LogOut,
   PieChart as PieIcon,
@@ -31,7 +32,6 @@ const COLORS = ["#0f766e", "#b45309", "#2563eb", "#be123c", "#4d7c0f", "#7c3aed"
 const DEFAULT_QUALITY_CRITERIA = {
   hard_filters: {
     market_cap_cr: { min: 5000 },
-    pe_ratio: { enabled: true, min: 10, max: 25 },
     eps_trend: { lookback_years: 5, must_trend_up: true },
     revenue_growth_yoy: { min: 10, sustained_years: 3 },
     profit_margin: { positive: true },
@@ -39,7 +39,9 @@ const DEFAULT_QUALITY_CRITERIA = {
     roe: { min: 15 },
     cash_flow_from_operations: { positive: true, growing_yoy: true },
     debtor_days: { max: 100 },
-    fii_dii_holding: { both_increasing: true },
+    fii_holding_pct: { min: 0, max: 100 },
+    dii_holding_pct: { min: 0, max: 100 },
+    public_holding_pct: { min: 0, max: 100 },
     moving_average_signal: { ma20_above_ma200: true },
     dividend_yield: { nice_to_have: true },
   },
@@ -58,7 +60,6 @@ const PERSONA_PRESETS = ["Conservative", "Growth", "Dividend", "Momentum", "Bank
 const SORT_OPTIONS = [
   ["score", "Score"],
   ["market_cap", "Market cap"],
-  ["pe", "P/E"],
   ["roe", "ROE"],
   ["revenue", "Revenue growth"],
   ["debt", "Debt/equity"],
@@ -146,7 +147,7 @@ function BrandBlock({ compact = false }) {
 
 function AuthPage({ onAuth }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name: "Investor", email: "investor@example.com", password: "mahiro123" });
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   async function submit(e) {
     e.preventDefault();
@@ -410,14 +411,15 @@ function ResultsTable({ results, onSelect, onWatchlist, onPortfolio }) {
   return (
     <div className="overflow-auto">
       <table className="data-table">
-        <thead><tr>{["Stock", "Sector", "Data", "P/E", "Revenue", "ROE", "D/E", "Debtors", "MA", "Score", "Status", "Actions"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr>{["Stock", "Sector", "Data", "Revenue", "ROE", "D/E", "FII", "DII", "Public", "MA", "Score", "Status", "Actions"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
         <tbody>{results.map((r) => <tr key={r.symbol}>
           <td><div className="font-semibold">{r.company_name}</div><div className="font-mono text-xs text-zinc-500">{r.symbol}</div></td>
-          <td>{r.sector}</td><td><DataQualityBadge snapshot={r.fundamentals} /></td><td>{fmt(r.fundamentals.pe_ratio)}</td><td>{fmt(r.fundamentals.revenue_growth_yoy)}%</td><td>{fmt(r.fundamentals.roe)}%</td><td>{fmt(r.fundamentals.debt_to_equity)}</td><td>{fmt(r.fundamentals.debtor_days)}</td>
+          <td>{r.sector}</td><td><DataQualityBadge snapshot={r.fundamentals} /></td><td>{fmt(r.fundamentals.revenue_growth_yoy)}%</td><td>{fmt(r.fundamentals.roe)}%</td><td>{fmt(r.fundamentals.debt_to_equity)}</td><td>{fmt(r.fundamentals.fii_holding_pct)}%</td><td>{fmt(r.fundamentals.dii_holding_pct)}%</td><td>{fmt(r.fundamentals.public_holding_pct)}%</td>
           <td>{r.fundamentals.moving_avg_20d > r.fundamentals.moving_avg_200d ? "Bullish" : "Weak"}</td><td>{fmt(r.score)}</td><td><Badge ok={r.summary.verdict === "PASS"} text={r.summary.verdict} /></td>
           <td>
             <div className="flex gap-1">
               <button title="View detail" className="icon-button" onClick={() => onSelect(r)}><Eye size={17} /></button>
+              <a title="Open live chart" className="icon-button" href={chartUrl(r.symbol)} target="_blank" rel="noreferrer"><ExternalLink size={17} /></a>
               <button title="Add to watchlist" className="icon-button" onClick={() => onWatchlist(r)}><ListPlus size={17} /></button>
               <button title="Add to portfolio" className="icon-button" onClick={() => onPortfolio(r)}><Wallet size={17} /></button>
             </div>
@@ -440,10 +442,11 @@ function StockDetail({ api, stock, personaId }) {
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Badge ok={stock.summary.verdict === "PASS"} text={stock.summary.verdict} />
           <DataQualityBadge snapshot={f} />
+          <a className="secondary-button" href={chartUrl(stock.symbol)} target="_blank" rel="noreferrer"><ExternalLink size={17} /> Live Chart</a>
           <span className="text-sm text-stone-400">{failed.length ? `${failed.length} filters rejected this stock` : "No selected filters rejected this stock"}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[
-          ["Market Cap", `${fmt(stock.market_cap_cr)} Cr`], ["P/E", fmt(f.pe_ratio)], ["EPS", fmt(f.eps)], ["ROE", `${fmt(f.roe)}%`], ["Revenue", `${fmt(f.revenue_growth_yoy)}%`], ["Margin", `${fmt(f.profit_margin)}%`], ["Debt/Equity", fmt(f.debt_to_equity)], ["FII+DII", `${fmt((f.fii_holding_pct || 0) + (f.dii_holding_pct || 0))}%`],
+          ["Market Cap", `${fmt(stock.market_cap_cr)} Cr`], ["P/E", fmt(f.pe_ratio)], ["EPS", fmt(f.eps)], ["ROE", `${fmt(f.roe)}%`], ["Revenue", `${fmt(f.revenue_growth_yoy)}%`], ["Margin", `${fmt(f.profit_margin)}%`], ["Debt/Equity", fmt(f.debt_to_equity)], ["FII", `${fmt(f.fii_holding_pct)}%`], ["DII", `${fmt(f.dii_holding_pct)}%`], ["Public", `${fmt(f.public_holding_pct)}%`],
         ].map(([k, v]) => <Metric key={k} label={k} value={v} />)}</div>
         <div className="mt-5 h-56"><ResponsiveContainer><LineChart data={chart}><XAxis dataKey="year" /><YAxis /><Tooltip /><Line dataKey="eps" stroke="#0f766e" strokeWidth={2} /><Line dataKey="revenue" stroke="#b45309" strokeWidth={2} /></LineChart></ResponsiveContainer></div>
       </Panel>
@@ -628,19 +631,6 @@ function PreferenceEditor({ persona, onChange, compact = false }) {
         <Facet title="Size">
           <RangeField label="Market cap above" suffix="Cr" min={1000} max={200000} step={500} value={filters.market_cap_cr?.min} onChange={(v) => setPath(["criteria", "hard_filters", "market_cap_cr", "min"], v)} />
         </Facet>
-        <Facet title="Valuation">
-          <CheckBox label="Use P/E valuation filter" checked={filters.pe_ratio?.enabled !== false} onChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "enabled"], v)} />
-          <DualRangeField
-            label="P/E ratio"
-            minValue={filters.pe_ratio?.min}
-            maxValue={filters.pe_ratio?.max}
-            min={0}
-            max={60}
-            step={1}
-            onMinChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "min"], v)}
-            onMaxChange={(v) => setPath(["criteria", "hard_filters", "pe_ratio", "max"], v)}
-          />
-        </Facet>
         <Facet title="Growth">
           <RangeField label="Revenue growth at least" suffix="%" min={0} max={40} value={filters.revenue_growth_yoy?.min} onChange={(v) => setPath(["criteria", "hard_filters", "revenue_growth_yoy", "min"], v)} />
           <ChipGroup
@@ -659,12 +649,46 @@ function PreferenceEditor({ persona, onChange, compact = false }) {
           <RangeField label="Debt/equity below" min={0} max={3} step={0.1} value={filters.debt_to_equity?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debt_to_equity", "max"], v)} />
           <RangeField label="Debtor days below" min={30} max={180} value={filters.debtor_days?.max} onChange={(v) => setPath(["criteria", "hard_filters", "debtor_days", "max"], v)} />
         </Facet>
+        <Facet title="Ownership">
+          <DualRangeField
+            label="FII holding"
+            suffix="%"
+            minValue={filters.fii_holding_pct?.min}
+            maxValue={filters.fii_holding_pct?.max}
+            min={0}
+            max={100}
+            step={1}
+            onMinChange={(v) => setPath(["criteria", "hard_filters", "fii_holding_pct", "min"], v)}
+            onMaxChange={(v) => setPath(["criteria", "hard_filters", "fii_holding_pct", "max"], v)}
+          />
+          <DualRangeField
+            label="DII holding"
+            suffix="%"
+            minValue={filters.dii_holding_pct?.min}
+            maxValue={filters.dii_holding_pct?.max}
+            min={0}
+            max={100}
+            step={1}
+            onMinChange={(v) => setPath(["criteria", "hard_filters", "dii_holding_pct", "min"], v)}
+            onMaxChange={(v) => setPath(["criteria", "hard_filters", "dii_holding_pct", "max"], v)}
+          />
+          <DualRangeField
+            label="Public holding"
+            suffix="%"
+            minValue={filters.public_holding_pct?.min}
+            maxValue={filters.public_holding_pct?.max}
+            min={0}
+            max={100}
+            step={1}
+            onMinChange={(v) => setPath(["criteria", "hard_filters", "public_holding_pct", "min"], v)}
+            onMaxChange={(v) => setPath(["criteria", "hard_filters", "public_holding_pct", "max"], v)}
+          />
+        </Facet>
       </div>
       <div className="space-y-3">
         <Facet title="Mandatory Signals">
           <CheckBox label="Profit margin must be positive" checked={filters.profit_margin?.positive !== false} onChange={(v) => setPath(["criteria", "hard_filters", "profit_margin", "positive"], v)} />
           <CheckBox label="Cash flow must be positive and growing" checked={filters.cash_flow_from_operations?.growing_yoy !== false} onChange={(v) => setPath(["criteria", "hard_filters", "cash_flow_from_operations", "growing_yoy"], v)} />
-          <CheckBox label="FII and DII holdings both increasing" checked={filters.fii_dii_holding?.both_increasing !== false} onChange={(v) => setPath(["criteria", "hard_filters", "fii_dii_holding", "both_increasing"], v)} />
           <CheckBox label="20 DMA must be above 200 DMA" checked={filters.moving_average_signal?.ma20_above_ma200 !== false} onChange={(v) => setPath(["criteria", "hard_filters", "moving_average_signal", "ma20_above_ma200"], v)} />
         </Facet>
         <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
@@ -698,16 +722,18 @@ function RangeField({ label, value, onChange, min, max, step = 1, suffix = "" })
   );
 }
 
-function DualRangeField({ label, minValue, maxValue, onMinChange, onMaxChange, min, max, step = 1 }) {
+function DualRangeField({ label, minValue, maxValue, onMinChange, onMaxChange, min, max, step = 1, suffix = "" }) {
+  const currentMin = minValue ?? min;
+  const currentMax = maxValue ?? max;
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm font-medium text-zinc-700">
         <span>{label}</span>
-        <span className="range-value">{fmt(minValue)} - {fmt(maxValue)}</span>
+        <span className="range-value">{fmt(currentMin)} - {fmt(currentMax)} {suffix}</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <RangeField label="Min" min={min} max={max} step={step} value={minValue} onChange={onMinChange} />
-        <RangeField label="Max" min={min} max={max} step={step} value={maxValue} onChange={onMaxChange} />
+        <RangeField label="Min" suffix={suffix} min={min} max={max} step={step} value={currentMin} onChange={onMinChange} />
+        <RangeField label="Max" suffix={suffix} min={min} max={max} step={step} value={currentMax} onChange={onMaxChange} />
       </div>
     </div>
   );
@@ -790,12 +816,16 @@ function dataQuality(snapshot) {
   return "Cached";
 }
 
+function chartUrl(symbol) {
+  const base = String(symbol || "").replace(".NS", "").toUpperCase();
+  return `https://www.tradingview.com/chart/?symbol=NSE%3A${encodeURIComponent(base)}`;
+}
+
 function sortResults(a, b, sortBy, dir) {
   const mult = dir === "asc" ? 1 : -1;
   const value = (row) => {
     if (sortBy === "score") return row.score ?? 0;
     if (sortBy === "market_cap") return row.market_cap_cr ?? 0;
-    if (sortBy === "pe") return row.fundamentals?.pe_ratio ?? 0;
     if (sortBy === "roe") return row.fundamentals?.roe ?? 0;
     if (sortBy === "revenue") return row.fundamentals?.revenue_growth_yoy ?? 0;
     if (sortBy === "debt") return row.fundamentals?.debt_to_equity ?? 999;

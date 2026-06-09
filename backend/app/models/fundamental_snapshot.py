@@ -21,6 +21,7 @@ class FundamentalSnapshot(Base):
     debtor_days = Column(Numeric(10, 2))
     fii_holding_pct = Column(Numeric(10, 2))
     dii_holding_pct = Column(Numeric(10, 2))
+    public_holding_pct = Column(Numeric(10, 2))
     moving_avg_20d = Column(Numeric(15, 2))
     moving_avg_200d = Column(Numeric(15, 2))
     dividend_yield = Column(Numeric(10, 2))

@@ -39,6 +39,7 @@ def fetch_stock_data(symbol: str) -> dict:
                 "debt_to_equity": (_safe_float(info.get("debtToEquity")) or snapshot["debt_to_equity"] * 100) / 100,
                 "profit_margin": ((_safe_float(info.get("profitMargins")) or 0) * 100) or snapshot["profit_margin"],
                 "dividend_yield": ((_safe_float(info.get("dividendYield")) or 0) * 100) or snapshot["dividend_yield"],
+                "public_holding_pct": snapshot.get("public_holding_pct"),
                 "moving_avg_20d": round(ma20, 2),
                 "moving_avg_200d": round(ma200, 2),
                 "raw_json": {**snapshot["raw_json"], "yfinance_info": info, "source_date": date.today().isoformat()},

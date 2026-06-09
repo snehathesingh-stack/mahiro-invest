@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.config import settings
 from app.database import Base, SessionLocal, engine
 from app.routers import alerts, auth, earnings, health, personas, portfolio, screener, stocks, watchlists
@@ -29,6 +30,8 @@ app.include_router(earnings.router)
 @app.on_event("startup")
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE IF EXISTS fundamental_snapshots ADD COLUMN IF NOT EXISTS public_holding_pct NUMERIC(10, 2)"))
     db = SessionLocal()
     try:
         seed_defaults(db)

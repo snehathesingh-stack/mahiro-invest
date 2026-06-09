@@ -32,6 +32,7 @@ def snapshot_dict(snapshot) -> dict:
         "debtor_days": _f(snapshot.debtor_days),
         "fii_holding_pct": _f(snapshot.fii_holding_pct),
         "dii_holding_pct": _f(snapshot.dii_holding_pct),
+        "public_holding_pct": _f(getattr(snapshot, "public_holding_pct", None)),
         "moving_avg_20d": _f(snapshot.moving_avg_20d),
         "moving_avg_200d": _f(snapshot.moving_avg_200d),
         "dividend_yield": _f(snapshot.dividend_yield),
