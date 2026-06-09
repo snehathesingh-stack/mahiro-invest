@@ -520,7 +520,7 @@ function Earnings({ api }) {
   const [scope, setScope] = useState("full");
   const [items, setItems] = useState([]);
   useEffect(() => { api(`/earnings/upcoming?days=${days}&scope=${scope}`).then(setItems); }, [days, scope]);
-  return <Panel title="Upcoming NSE Earnings" icon={CalendarDays}><div className="toolbar mb-4"><select className="input" value={days} onChange={(e) => setDays(Number(e.target.value))}><option>30</option><option>60</option><option>90</option></select><select className="input" value={scope} onChange={(e) => setScope(e.target.value)}><option value="full">Full Nifty 500</option><option value="portfolio">Portfolio</option></select></div><EarningsList items={items} /></Panel>;
+  return <Panel title="Upcoming NSE Earnings" icon={CalendarDays}><div className="toolbar mb-4"><select className="input" value={days} onChange={(e) => setDays(Number(e.target.value))}><option>30</option><option>60</option><option>90</option></select><select className="input" value={scope} onChange={(e) => setScope(e.target.value)}><option value="full">Full NSE Universe</option><option value="portfolio">Portfolio</option></select></div><EarningsList items={items} /></Panel>;
 }
 
 function Personas({ api }) {
