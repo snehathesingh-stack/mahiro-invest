@@ -31,6 +31,65 @@ QUALITY_PERSONA_CRITERIA = {
 }
 DAD_PERSONA_CRITERIA = QUALITY_PERSONA_CRITERIA
 
+
+def persona_preset(name: str) -> tuple[str, str, dict]:
+    key = name.strip().lower()
+    criteria = {
+        "Conservative": {
+            **QUALITY_PERSONA_CRITERIA,
+            "hard_filters": {
+                **QUALITY_PERSONA_CRITERIA["hard_filters"],
+                "market_cap_cr": {"min": 20000},
+                "pe_ratio": {"enabled": True, "min": 8, "max": 22},
+                "debt_to_equity": {"max": 0.6},
+                "roe": {"min": 18},
+            },
+        },
+        "Growth": {
+            **QUALITY_PERSONA_CRITERIA,
+            "hard_filters": {
+                **QUALITY_PERSONA_CRITERIA["hard_filters"],
+                "market_cap_cr": {"min": 2000},
+                "pe_ratio": {"enabled": False, "min": 0, "max": 60},
+                "revenue_growth_yoy": {"min": 18, "sustained_years": 2},
+                "roe": {"min": 12},
+            },
+        },
+        "Dividend": {
+            **QUALITY_PERSONA_CRITERIA,
+            "hard_filters": {
+                **QUALITY_PERSONA_CRITERIA["hard_filters"],
+                "pe_ratio": {"enabled": True, "min": 6, "max": 28},
+                "dividend_yield": {"nice_to_have": False, "min": 1.5},
+                "debt_to_equity": {"max": 0.8},
+            },
+        },
+        "Momentum": {
+            **QUALITY_PERSONA_CRITERIA,
+            "hard_filters": {
+                **QUALITY_PERSONA_CRITERIA["hard_filters"],
+                "pe_ratio": {"enabled": False, "min": 0, "max": 80},
+                "moving_average_signal": {"ma20_above_ma200": True},
+                "revenue_growth_yoy": {"min": 12, "sustained_years": 1},
+            },
+        },
+        "Banking-focused": {
+            **QUALITY_PERSONA_CRITERIA,
+            "hard_filters": {
+                **QUALITY_PERSONA_CRITERIA["hard_filters"],
+                "market_cap_cr": {"min": 10000},
+                "pe_ratio": {"enabled": True, "min": 5, "max": 30},
+                "debtor_days": {"max": 100},
+                "debt_to_equity": {"max": 2.5},
+                "roe": {"min": 12},
+            },
+        },
+    }
+    for preset_name, preset_criteria in criteria.items():
+        if preset_name.lower() == key:
+            return preset_name, f"{preset_name} NSE screening profile.", preset_criteria
+    return name, f"{name} custom NSE screening profile.", QUALITY_PERSONA_CRITERIA
+
 NIFTY_500_SEED = [
     ("RELIANCE.NS", "Reliance Industries", "Energy"),
     ("TCS.NS", "Tata Consultancy Services", "Information Technology"),

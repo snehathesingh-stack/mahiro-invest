@@ -4,5 +4,6 @@ from app.models.persona import Persona
 from app.models.holding import Holding
 from app.models.watchlist import Watchlist
 from app.models.fundamental_snapshot import FundamentalSnapshot
+from app.models.saved_screen import SavedScreen
 
-__all__ = ["User", "Stock", "Persona", "Holding", "Watchlist", "FundamentalSnapshot"]
+__all__ = ["User", "Stock", "Persona", "Holding", "Watchlist", "FundamentalSnapshot", "SavedScreen"]

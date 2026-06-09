@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowUpDown,
   BarChart3,
   Bell,
+  Bookmark,
   CalendarDays,
   CheckCircle2,
   Edit3,
   Eye,
+  ListPlus,
   LogOut,
   PieChart as PieIcon,
   Play,
@@ -50,6 +53,16 @@ const NAV = [
   ["portfolio", Wallet, "Portfolio"],
   ["earnings", CalendarDays, "Earnings"],
   ["personas", Edit3, "Persona"],
+];
+const PERSONA_PRESETS = ["Conservative", "Growth", "Dividend", "Momentum", "Banking-focused"];
+const SORT_OPTIONS = [
+  ["score", "Score"],
+  ["market_cap", "Market cap"],
+  ["pe", "P/E"],
+  ["roe", "ROE"],
+  ["revenue", "Revenue growth"],
+  ["debt", "Debt/equity"],
+  ["verdict", "Pass/fail"],
 ];
 
 export default function App() {
@@ -211,37 +224,90 @@ function Screener({ api }) {
   const [personaId, setPersonaId] = useState("");
   const [draft, setDraft] = useState(null);
   const [results, setResults] = useState([]);
+  const [savedScreens, setSavedScreens] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sectorFilters, setSectorFilters] = useState([]);
+  const [sortBy, setSortBy] = useState("score");
+  const [sortDir, setSortDir] = useState("desc");
+  const [message, setMessage] = useState("");
+  const debouncedDraft = useDebounce(draft, 700);
   useEffect(() => {
     api("/personas/").then((p) => {
       setPersonas(p);
       setPersonaId(p[0]?.id || "");
       setDraft(p[0] ? clone(p[0]) : null);
     });
+    api("/screener/saved").then(setSavedScreens).catch(() => setSavedScreens([]));
   }, []);
   useEffect(() => {
     const next = personas.find((p) => String(p.id) === String(personaId));
     setDraft(next ? clone(next) : null);
   }, [personaId]);
+  useEffect(() => {
+    if (!debouncedDraft?.id) return;
+    run({ auto: true });
+  }, [debouncedDraft]);
 
-  async function savePersona() {
+  async function savePersona({ updateDraft = true } = {}) {
     if (!draft) return null;
     const saved = await api(`/personas/${draft.id}`, { method: "PUT", body: draft });
     setPersonas((current) => current.map((p) => (p.id === saved.id ? saved : p)));
-    setDraft(clone(saved));
+    if (updateDraft) setDraft(clone(saved));
     return saved;
   }
 
-  async function run() {
+  async function run({ auto = false } = {}) {
     setLoading(true);
-    const saved = await savePersona();
-    const data = await api("/screener/run", { method: "POST", body: { persona_id: Number(saved?.id || personaId) } }).finally(() => setLoading(false));
-    setResults(data.results);
-    setSelected(data.results[0]);
+    setMessage(auto ? "Applying filters..." : "");
+    try {
+      const saved = await savePersona({ updateDraft: !auto });
+      const data = await api("/screener/run", { method: "POST", body: { persona_id: Number(saved?.id || personaId) } });
+      setResults(data.results);
+      setSelected((current) => current ? data.results.find((r) => r.symbol === current.symbol) || data.results[0] : data.results[0]);
+      setMessage(auto ? "Filters applied live." : "Screener run complete.");
+    } catch (err) {
+      setMessage(err.message || "Could not run screener.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function createPreset(name) {
+    const persona = await api("/personas/preset", { method: "POST", body: { name } });
+    const next = await api("/personas/");
+    setPersonas(next);
+    setPersonaId(persona.id);
+    setDraft(clone(persona));
+    setMessage(`${persona.name} profile created.`);
+  }
+  async function duplicateCurrent() {
+    if (!personaId) return;
+    const persona = await api(`/personas/${personaId}/duplicate`, { method: "POST" });
+    const next = await api("/personas/");
+    setPersonas(next);
+    setPersonaId(persona.id);
+    setDraft(clone(persona));
+    setMessage("Profile duplicated.");
+  }
+  async function saveScreen() {
+    const name = window.prompt("Save this screen as", "Today's shortlist");
+    if (!name) return;
+    const saved = await api("/screener/saved", { method: "POST", body: { name, persona_id: Number(personaId), results: visibleResults } });
+    setSavedScreens((items) => [saved, ...items]);
+    setMessage(`Saved ${saved.name}.`);
+  }
+  async function addToWatchlist(stock) {
+    const lists = await api("/watchlists/");
+    const list = lists[0] || await api("/watchlists/", { method: "POST", body: { name: "Screener Picks", stock_ids: [] } });
+    const stock_ids = Array.from(new Set([...(list.stock_ids || []), stock.symbol]));
+    await api(`/watchlists/${list.id}`, { method: "PUT", body: { name: list.name, stock_ids } });
+    setMessage(`${stock.symbol} added to ${list.name}.`);
+  }
+  async function addToPortfolio(stock) {
+    await api("/portfolio/", { method: "POST", body: { symbol: stock.symbol, quantity: 1, avg_buy_price: stock.last_price || 0 } });
+    setMessage(`${stock.symbol} added to portfolio with quantity 1.`);
   }
   const sectors = [...new Set(results.map((r) => r.sector || "Unknown"))].sort();
   const visibleResults = results.filter((r) => {
@@ -249,7 +315,7 @@ function Screener({ api }) {
     const matchesStatus = statusFilter === "all" || r.summary.verdict.toLowerCase() === statusFilter;
     const matchesSector = !sectorFilters.length || sectorFilters.includes(r.sector || "Unknown");
     return matchesText && matchesStatus && matchesSector;
-  });
+  }).sort((a, b) => sortResults(a, b, sortBy, sortDir));
   return (
     <div className="space-y-5">
       <section className="screener-shell">
@@ -263,6 +329,13 @@ function Screener({ api }) {
               {personas.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
+          <div className="mb-4 flex gap-2">
+            <button className="secondary-button flex-1" type="button" onClick={duplicateCurrent}>Duplicate</button>
+            <select className="input min-w-0 flex-1" defaultValue="" onChange={(e) => e.target.value && createPreset(e.target.value)}>
+              <option value="">Create preset</option>
+              {PERSONA_PRESETS.map((preset) => <option key={preset} value={preset}>{preset}</option>)}
+            </select>
+          </div>
           {draft && <PreferenceEditor persona={draft} onChange={setDraft} compact />}
           <Facet title="Result View">
             <ChipGroup
@@ -280,7 +353,7 @@ function Screener({ api }) {
           </Facet>
           <div className="sticky-actions">
             <button className="secondary-button flex-1" onClick={savePersona} disabled={!draft}><Save size={18} /> Save</button>
-            <button className="primary-button flex-1" onClick={run} disabled={!personaId || loading}><Play size={18} /> {loading ? "Running" : "Run"}</button>
+            <button className="primary-button flex-1" onClick={() => run()} disabled={!personaId || loading}><Play size={18} /> {loading ? "Running" : "Run"}</button>
           </div>
         </aside>
         <main className="space-y-4">
@@ -293,10 +366,23 @@ function Screener({ api }) {
               <Search className="pointer-events-none absolute left-3 top-3 text-zinc-400" size={17} />
               <input className="input w-full pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search stock or symbol" />
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="input" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                {SORT_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              </select>
+              <button className="icon-button" title="Toggle sort direction" onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}><ArrowUpDown size={17} /></button>
+              <button className="secondary-button" onClick={saveScreen} disabled={!visibleResults.length}><Bookmark size={17} /> Save Screen</button>
+            </div>
           </section>
+          {message && <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">{message}</div>}
+          {!!savedScreens.length && (
+            <div className="flex flex-wrap gap-2">
+              {savedScreens.slice(0, 5).map((screen) => <button key={screen.id} className="chip" onClick={() => { setResults(screen.results || []); setMessage(`Loaded ${screen.name}.`); }}>{screen.name}</button>)}
+            </div>
+          )}
           <ResultSummary results={visibleResults} total={results.length} />
           <Panel title="Screener Results" icon={ShieldCheck}>
-            <ResultsTable results={visibleResults} onSelect={setSelected} />
+            <ResultsTable results={visibleResults} onSelect={setSelected} onWatchlist={addToWatchlist} onPortfolio={addToPortfolio} />
           </Panel>
         </main>
       </section>
@@ -319,17 +405,23 @@ function ResultSummary({ results, total }) {
   );
 }
 
-function ResultsTable({ results, onSelect }) {
+function ResultsTable({ results, onSelect, onWatchlist, onPortfolio }) {
   if (!results.length) return null;
   return (
     <div className="overflow-auto">
       <table className="data-table">
-        <thead><tr>{["Stock", "Sector", "P/E", "Revenue", "ROE", "D/E", "Debtors", "MA", "Score", "Status", ""].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+        <thead><tr>{["Stock", "Sector", "Data", "P/E", "Revenue", "ROE", "D/E", "Debtors", "MA", "Score", "Status", "Actions"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
         <tbody>{results.map((r) => <tr key={r.symbol}>
           <td><div className="font-semibold">{r.company_name}</div><div className="font-mono text-xs text-zinc-500">{r.symbol}</div></td>
-          <td>{r.sector}</td><td>{fmt(r.fundamentals.pe_ratio)}</td><td>{fmt(r.fundamentals.revenue_growth_yoy)}%</td><td>{fmt(r.fundamentals.roe)}%</td><td>{fmt(r.fundamentals.debt_to_equity)}</td><td>{fmt(r.fundamentals.debtor_days)}</td>
+          <td>{r.sector}</td><td><DataQualityBadge snapshot={r.fundamentals} /></td><td>{fmt(r.fundamentals.pe_ratio)}</td><td>{fmt(r.fundamentals.revenue_growth_yoy)}%</td><td>{fmt(r.fundamentals.roe)}%</td><td>{fmt(r.fundamentals.debt_to_equity)}</td><td>{fmt(r.fundamentals.debtor_days)}</td>
           <td>{r.fundamentals.moving_avg_20d > r.fundamentals.moving_avg_200d ? "Bullish" : "Weak"}</td><td>{fmt(r.score)}</td><td><Badge ok={r.summary.verdict === "PASS"} text={r.summary.verdict} /></td>
-          <td><button title="View detail" className="icon-button" onClick={() => onSelect(r)}><Eye size={17} /></button></td>
+          <td>
+            <div className="flex gap-1">
+              <button title="View detail" className="icon-button" onClick={() => onSelect(r)}><Eye size={17} /></button>
+              <button title="Add to watchlist" className="icon-button" onClick={() => onWatchlist(r)}><ListPlus size={17} /></button>
+              <button title="Add to portfolio" className="icon-button" onClick={() => onPortfolio(r)}><Wallet size={17} /></button>
+            </div>
+          </td>
         </tr>)}</tbody>
       </table>
     </div>
@@ -340,18 +432,38 @@ function StockDetail({ api, stock, personaId }) {
   const [explain, setExplain] = useState("");
   const f = stock.fundamentals;
   const chart = (f.raw_json?.eps_history || [f.eps]).map((eps, i) => ({ year: String(2021 + i), eps, revenue: f.raw_json?.revenue_growth_history?.[i] || f.revenue_growth_yoy }));
+  const passed = stock.evaluations.filter((e) => e.status === "pass");
+  const failed = stock.evaluations.filter((e) => e.status !== "pass");
   return (
     <section className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
       <Panel title={`${stock.company_name} Detail`} icon={BarChart3}>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Badge ok={stock.summary.verdict === "PASS"} text={stock.summary.verdict} />
+          <DataQualityBadge snapshot={f} />
+          <span className="text-sm text-stone-400">{failed.length ? `${failed.length} filters rejected this stock` : "No selected filters rejected this stock"}</span>
+        </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[
           ["Market Cap", `${fmt(stock.market_cap_cr)} Cr`], ["P/E", fmt(f.pe_ratio)], ["EPS", fmt(f.eps)], ["ROE", `${fmt(f.roe)}%`], ["Revenue", `${fmt(f.revenue_growth_yoy)}%`], ["Margin", `${fmt(f.profit_margin)}%`], ["Debt/Equity", fmt(f.debt_to_equity)], ["FII+DII", `${fmt((f.fii_holding_pct || 0) + (f.dii_holding_pct || 0))}%`],
         ].map(([k, v]) => <Metric key={k} label={k} value={v} />)}</div>
         <div className="mt-5 h-56"><ResponsiveContainer><LineChart data={chart}><XAxis dataKey="year" /><YAxis /><Tooltip /><Line dataKey="eps" stroke="#0f766e" strokeWidth={2} /><Line dataKey="revenue" stroke="#b45309" strokeWidth={2} /></LineChart></ResponsiveContainer></div>
       </Panel>
-      <Panel title="Criteria Badges" icon={CheckCircle2}>
-        <div className="space-y-2">{stock.evaluations.map((e) => <div key={e.criterion} className="flex items-center justify-between border-b border-zinc-100 py-2"><span>{e.criterion}</span><Badge ok={e.status === "pass"} text={e.status.toUpperCase()} /></div>)}</div>
+      <Panel title="Why It Passed Or Failed" icon={CheckCircle2}>
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-md border border-emerald-400/20 bg-emerald-400/10 p-3">
+            <div className="text-sm font-semibold text-emerald-200">Passed filters</div>
+            <div className="mt-1 text-2xl font-semibold text-stone-100">{passed.length}</div>
+          </div>
+          <div className="rounded-md border border-red-400/20 bg-red-400/10 p-3">
+            <div className="text-sm font-semibold text-red-200">Rejected by</div>
+            <div className="mt-1 text-2xl font-semibold text-stone-100">{failed.length}</div>
+          </div>
+        </div>
+        <div className="space-y-2">{stock.evaluations.map((e) => <div key={e.criterion} className="rounded-md border border-amber-500/10 bg-black/20 p-3">
+          <div className="flex items-center justify-between gap-3"><span className="font-medium text-stone-100">{e.criterion}</span><Badge ok={e.status === "pass"} text={e.status.toUpperCase()} /></div>
+          <div className="mt-1 text-sm text-stone-400">{e.reason}</div>
+        </div>)}</div>
         <button className="secondary-button mt-4" onClick={() => api(`/screener/explain/${stock.symbol}/${personaId}`).then((r) => setExplain(r.explanation))}>Get LLM Explanation</button>
-        {explain && <p className="mt-3 rounded bg-zinc-100 p-3 text-sm text-zinc-700">{explain}</p>}
+        {explain && <p className="mt-3 rounded border border-amber-500/20 bg-black/20 p-3 text-sm text-stone-300">{explain}</p>}
       </Panel>
     </section>
   );
@@ -434,6 +546,20 @@ function Personas({ api }) {
     await api(`/personas/${selected.id}`, { method: "PUT", body: selected });
     load();
   }
+  async function createPreset(name) {
+    if (!name) return;
+    const persona = await api("/personas/preset", { method: "POST", body: { name } });
+    const next = await api("/personas/");
+    setItems(next);
+    setSelected(clone(persona));
+  }
+  async function duplicateSelected() {
+    if (!selected) return;
+    const persona = await api(`/personas/${selected.id}/duplicate`, { method: "POST" });
+    const next = await api("/personas/");
+    setItems(next);
+    setSelected(clone(persona));
+  }
   function resetCriteria() {
     if (!selected) return;
     setSelected({ ...selected, criteria: clone(DEFAULT_QUALITY_CRITERIA) });
@@ -443,6 +569,13 @@ function Personas({ api }) {
   return (
     <section className="grid gap-5 xl:grid-cols-[340px_1fr]">
       <Panel title="Investor Profiles" icon={ShieldCheck}>
+        <div className="mb-4 grid gap-2">
+          <select className="input w-full" defaultValue="" onChange={(e) => createPreset(e.target.value)}>
+            <option value="">Create profile preset</option>
+            {PERSONA_PRESETS.map((preset) => <option key={preset} value={preset}>{preset}</option>)}
+          </select>
+          <button className="secondary-button w-full" onClick={duplicateSelected} disabled={!selected}>Duplicate selected</button>
+        </div>
         <div className="space-y-3">
           {items.map((p) => (
             <button key={p.id} className={`persona-card ${selected?.id === p.id ? "persona-card-active" : ""}`} onClick={() => setSelected(clone(p))}>
@@ -635,6 +768,50 @@ function Metric({ label, value }) {
 
 function Badge({ ok, text }) {
   return <span className={`inline-flex rounded px-2 py-1 text-xs font-semibold ${ok ? "bg-emerald-400/15 text-emerald-300" : "bg-red-400/15 text-red-300"}`}>{text}</span>;
+}
+
+function DataQualityBadge({ snapshot }) {
+  const quality = dataQuality(snapshot);
+  const classes = {
+    Live: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
+    Cached: "border-blue-400/25 bg-blue-400/10 text-blue-200",
+    Estimated: "border-amber-400/25 bg-amber-400/10 text-amber-200",
+    Missing: "border-red-400/25 bg-red-400/10 text-red-200",
+  };
+  return <span className={`inline-flex rounded border px-2 py-1 text-xs font-semibold ${classes[quality]}`}>{quality}</span>;
+}
+
+function dataQuality(snapshot) {
+  if (!snapshot) return "Missing";
+  if (snapshot.raw_json?.fallback || snapshot.source === "fallback") return "Estimated";
+  if (!snapshot.pe_ratio && !snapshot.roe && !snapshot.revenue_growth_yoy) return "Missing";
+  const fetched = snapshot.fetched_at ? new Date(snapshot.fetched_at).getTime() : 0;
+  if (fetched && Date.now() - fetched < 1000 * 60 * 60 * 8) return "Live";
+  return "Cached";
+}
+
+function sortResults(a, b, sortBy, dir) {
+  const mult = dir === "asc" ? 1 : -1;
+  const value = (row) => {
+    if (sortBy === "score") return row.score ?? 0;
+    if (sortBy === "market_cap") return row.market_cap_cr ?? 0;
+    if (sortBy === "pe") return row.fundamentals?.pe_ratio ?? 0;
+    if (sortBy === "roe") return row.fundamentals?.roe ?? 0;
+    if (sortBy === "revenue") return row.fundamentals?.revenue_growth_yoy ?? 0;
+    if (sortBy === "debt") return row.fundamentals?.debt_to_equity ?? 999;
+    if (sortBy === "verdict") return row.summary?.verdict === "PASS" ? 1 : 0;
+    return 0;
+  };
+  return (value(a) - value(b)) * mult || a.symbol.localeCompare(b.symbol);
+}
+
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
 }
 
 function useLoad(fn) {

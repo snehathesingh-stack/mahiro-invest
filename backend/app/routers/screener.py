@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import FundamentalSnapshot, Persona, Stock, User
+from app.models import FundamentalSnapshot, Persona, SavedScreen, Stock, User
 from app.routers.stocks import persist_stock_data
 from app.serializers import snapshot_dict, stock_dict
 from app.services.llm_explainer import explain
@@ -18,6 +18,12 @@ router = APIRouter(prefix="/screener", tags=["screener"])
 class ScreenerRun(BaseModel):
     persona_id: int
     symbols: list[str] | None = None
+
+
+class SavedScreenPayload(BaseModel):
+    name: str
+    persona_id: int
+    results: list[dict]
 
 
 def _latest(db: Session, stock_id: int):
@@ -55,3 +61,51 @@ def explain_stock(symbol: str, persona_id: int, db: Session = Depends(get_db), u
         stock, snap = persist_stock_data(db, stock.symbol)
     evaluation = evaluate_stock(stock, snap, persona.criteria)
     return {"symbol": stock.symbol, "persona_id": persona.id, "explanation": explain(stock.symbol, persona.name, evaluation)}
+
+
+def _saved_screen_dict(screen: SavedScreen) -> dict:
+    return {
+        "id": screen.id,
+        "name": screen.name,
+        "persona_id": screen.persona_id,
+        "symbols": screen.symbols,
+        "criteria": screen.criteria,
+        "results": screen.results,
+        "created_at": screen.created_at.isoformat() if screen.created_at else None,
+    }
+
+
+@router.get("/saved")
+def list_saved_screens(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[dict]:
+    screens = db.query(SavedScreen).filter(SavedScreen.user_id == user.id).order_by(SavedScreen.created_at.desc()).all()
+    return [_saved_screen_dict(screen) for screen in screens]
+
+
+@router.post("/saved")
+def save_screen(payload: SavedScreenPayload, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    persona = db.query(Persona).filter(Persona.id == payload.persona_id, Persona.user_id == user.id).first()
+    if not persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    trimmed = payload.results[:250]
+    screen = SavedScreen(
+        user_id=user.id,
+        persona_id=persona.id,
+        name=payload.name,
+        symbols=[item.get("symbol") for item in trimmed if item.get("symbol")],
+        criteria=persona.criteria,
+        results=trimmed,
+    )
+    db.add(screen)
+    db.commit()
+    db.refresh(screen)
+    return _saved_screen_dict(screen)
+
+
+@router.delete("/saved/{screen_id}")
+def delete_saved_screen(screen_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> dict:
+    screen = db.query(SavedScreen).filter(SavedScreen.id == screen_id, SavedScreen.user_id == user.id).first()
+    if not screen:
+        raise HTTPException(status_code=404, detail="Saved screen not found")
+    db.delete(screen)
+    db.commit()
+    return {"ok": True}
