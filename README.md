@@ -17,6 +17,8 @@ Mahiro Invest is a personalized NSE stock screener, portfolio tracker, and earni
 
 See [docs/daily-contribution-roadmap.md](docs/daily-contribution-roadmap.md) for the daily improvement plan. It is designed to keep GitHub activity consistent through real product work, not fake or backdated commits.
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines, verification commands, and product rules to preserve.
+
 ## Local Setup
 
 1. Copy env examples:
