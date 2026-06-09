@@ -13,6 +13,10 @@ Mahiro Invest is a personalized NSE stock screener, portfolio tracker, and earni
 - Watchlist and portfolio actions directly from screener rows.
 - Portfolio P&L, sector allocation, alerts, earnings calendar, LLM explanation hooks, and ML anomaly service scaffolding.
 
+## Development Roadmap
+
+See [docs/daily-contribution-roadmap.md](docs/daily-contribution-roadmap.md) for the daily improvement plan. It is designed to keep GitHub activity consistent through real product work, not fake or backdated commits.
+
 ## Local Setup
 
 1. Copy env examples:
