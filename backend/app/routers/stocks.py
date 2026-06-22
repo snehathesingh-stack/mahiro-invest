@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import FundamentalSnapshot, Stock
 from app.serializers import snapshot_dict, stock_dict
 from app.services.data_fetcher import fetch_stock_data
+from app.services.screener_universe import sync_screener_all_listed
 from app.services.seed import sync_stock_universe
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
@@ -45,6 +46,11 @@ def refresh_universe(db: Session = Depends(get_db)) -> dict:
     summary = sync_stock_universe(db)
     count = db.query(Stock).count()
     return {**summary, "stock_count": count}
+
+
+@router.post("/refresh-screener-universe")
+def refresh_screener_universe(max_pages: int | None = Query(default=None, ge=1, le=300), db: Session = Depends(get_db)) -> dict:
+    return sync_screener_all_listed(db, max_pages=max_pages)
 
 
 @router.get("/{symbol}")

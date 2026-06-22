@@ -323,6 +323,19 @@ function Screener({ api }) {
       setLoading(false);
     }
   }
+  async function importScreenerUniverse() {
+    setLoading(true);
+    setMessage("Importing Screener all-listed companies. This can take a little while...");
+    try {
+      const summary = await api("/stocks/refresh-screener-universe", { method: "POST" });
+      setMessage(`Imported ${summary.symbols_synced} Screener companies. Running screener again...`);
+      await run();
+    } catch (err) {
+      setMessage(err.message || "Could not import Screener companies.");
+    } finally {
+      setLoading(false);
+    }
+  }
   const sectors = [...new Set(results.map((r) => r.sector || "Unknown"))].sort();
   const visibleResults = results.filter((r) => {
     const matchesText = `${r.company_name} ${r.symbol}`.toLowerCase().includes(searchTerm.toLowerCase());
@@ -386,6 +399,7 @@ function Screener({ api }) {
               </select>
               <button className="icon-button" title="Toggle sort direction" onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}><ArrowUpDown size={17} /></button>
               <button className="secondary-button" onClick={refreshUniverse} disabled={loading}>Refresh NSE Universe</button>
+              <button className="secondary-button" onClick={importScreenerUniverse} disabled={loading}>Import Screener List</button>
               <button className="secondary-button" onClick={saveScreen} disabled={!visibleResults.length}><Bookmark size={17} /> Save Screen</button>
             </div>
           </section>

@@ -7,7 +7,7 @@ Mahiro Invest is a personalized NSE stock screener, portfolio tracker, and earni
 - JWT auth with local demo seed users.
 - Persona engine with editable rules and presets: Conservative, Growth, Dividend, Momentum, and Banking-focused.
 - Live debounced screener filters with sortable results.
-- Full NSE universe seed from NSE's official listed securities CSV, with local fallback data when live data is unavailable.
+- Full NSE universe seed from NSE's official listed securities CSV, plus a Screener.in all-listed importer for the larger market-wide screen.
 - Saved screener screens such as "Today's shortlist" or "June quality picks".
 - Stock detail with pass/fail reasons, rejected filters, raw metric values, charts, and data-quality labels.
 - Watchlist and portfolio actions directly from screener rows.
@@ -97,6 +97,8 @@ NSE/yfinance data can be incomplete. The UI labels data as:
 - `Cached`: older fetched data.
 - `Estimated`: generated fallback values used because live data was unavailable.
 - `Missing`: important values are unavailable.
+
+The Screener page at `https://www.screener.in/screens/357649/all-listed-companies/` currently reports 5,343 results. Use the Screener page's own terms and rate limits responsibly when importing it.
 
 ## Disclaimer
 
