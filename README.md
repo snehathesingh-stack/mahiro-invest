@@ -19,6 +19,8 @@ See [docs/daily-contribution-roadmap.md](docs/daily-contribution-roadmap.md) for
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines, verification commands, and product rules to preserve.
 
+See [docs/data-import-guide.md](docs/data-import-guide.md) for NSE and Screener.in universe import behavior.
+
 ## Local Setup
 
 1. Copy env examples:
