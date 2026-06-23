@@ -15,6 +15,8 @@ import {
   PieChart as PieIcon,
   Play,
   Plus,
+  Settings,
+  Star,
   Save,
   Search,
   ShieldCheck,
@@ -54,7 +56,10 @@ const NAV = [
   ["screener", Search, "Screener"],
   ["portfolio", Wallet, "Portfolio"],
   ["earnings", CalendarDays, "Earnings"],
-  ["personas", Edit3, "Persona"],
+  ["watchlist", Star, "Watchlist"],
+  ["saved", Bookmark, "Saved Screens"],
+  ["personas", Edit3, "Personas"],
+  ["settings", Settings, "Settings"],
 ];
 const PERSONA_PRESETS = ["Conservative", "Growth", "Dividend", "Momentum", "Banking-focused"];
 const SORT_OPTIONS = [
@@ -94,7 +99,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <div className="px-6 py-7 border-b border-amber-500/20">
+        <div className="px-6 py-8 border-b border-amber-500/20">
           <BrandBlock />
         </div>
         <nav className="p-4 space-y-1">
@@ -105,6 +110,13 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <div className="sidebar-profile">
+          <div className="profile-avatar">{(user?.name || "Investor").slice(0, 1).toUpperCase()}</div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-stone-100">{user?.name || "Investor"}</div>
+            <div className="mt-1 text-xs text-amber-200">Quality investor</div>
+          </div>
+        </div>
       </aside>
       <main className="lg:pl-72">
         <header className="app-header">
@@ -127,6 +139,7 @@ export default function App() {
           {active === "portfolio" && <Portfolio api={api} />}
           {active === "earnings" && <Earnings api={api} />}
           {active === "personas" && <Personas api={api} />}
+          {["watchlist", "saved", "settings"].includes(active) && <PlaceholderPage active={active} setActive={setActive} />}
         </div>
       </main>
     </div>
@@ -135,11 +148,11 @@ export default function App() {
 
 function BrandBlock({ compact = false }) {
   return (
-    <div className={compact ? "flex items-center gap-3" : "flex items-center gap-4"}>
+    <div className={compact ? "flex items-center gap-3" : "flex flex-col items-center text-center"}>
       <img className={compact ? "brand-logo-sm" : "brand-logo"} src={logoUrl} alt="Mahiro Invest" />
       <div>
-        <div className={compact ? "brand-title text-xl" : "brand-title text-2xl leading-tight"}>Mahiro Invest</div>
-        <div className="mt-1 max-w-44 text-sm leading-snug text-stone-400">Personal NSE quality screener</div>
+        <div className={compact ? "brand-title text-xl" : "brand-title mt-4 text-3xl leading-tight"}>Mahiro Invest</div>
+        <div className="mt-1 max-w-48 text-sm leading-snug text-stone-400">AI-powered NSE quality screener</div>
       </div>
     </div>
   );
@@ -192,31 +205,110 @@ function Dashboard({ api, setActive, user }) {
         </div>
         <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
       </section>
-      <section className="hero-band">
-        <img className="hero-logo" src={logoUrl} alt="Mahiro Invest" />
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-200">
-            <Sparkles size={14} /> 16 active quality criteria
-          </div>
-          <h2 className="mt-4 text-3xl font-semibold text-stone-100">Quality Investing OS</h2>
-          <p className="mt-2 text-stone-300">Filter NSE stocks using your own rules, compare pass/fail criteria, and track opportunities before earnings.</p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
-            <button className="dark-button" onClick={() => setActive("screener")}>View Opportunities</button>
-          </div>
+      <section className="dashboard-grid">
+        <div className="space-y-4">
+          <section className="hero-band">
+            <img className="hero-logo" src={logoUrl} alt="Mahiro Invest" />
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-200">
+                <Sparkles size={14} /> 16 active quality criteria
+              </div>
+              <h2 className="mt-4 text-4xl font-semibold text-stone-100">Personal Investing OS</h2>
+              <p className="mt-2 text-stone-300">Scan NSE and Screener-listed companies, inspect every rejected filter, and prepare before earnings with disciplined rules.</p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
+                <button className="dark-button" onClick={() => setActive("portfolio")}>Review Portfolio</button>
+              </div>
+            </div>
+          </section>
+          <Stats stats={portfolio?.stats} />
+          <section className="grid items-start gap-4 xl:grid-cols-[1.2fr_.8fr]">
+            <Panel title="Portfolio Performance" icon={BarChart3}>
+              <MiniPerformanceChart stats={portfolio?.stats} />
+            </Panel>
+            <Panel title="Sector Allocation" icon={PieIcon}>
+              <div className="h-64"><ResponsiveContainer><PieChart><Pie data={portfolio?.sector_allocation || []} dataKey="value" nameKey="sector">{(portfolio?.sector_allocation || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip formatter={(v) => money(v)} /></PieChart></ResponsiveContainer></div>
+            </Panel>
+          </section>
         </div>
+        <aside className="space-y-4">
+          <Panel title="Top Alerts" icon={Bell}>
+            <AlertList alerts={alerts || []} />
+          </Panel>
+          <Panel title="Earnings This Week" icon={CalendarDays}>
+            <EarningsList items={(earnings || []).filter((e) => e.is_this_week)} compact />
+          </Panel>
+          <Panel title="Top Opportunities" icon={Star}>
+            <OpportunityList />
+          </Panel>
+        </aside>
       </section>
-      <Stats stats={portfolio?.stats} />
-      <section className="grid items-start gap-4 xl:grid-cols-[1fr_1fr]">
-        <Panel title="Top Alerts" icon={Bell}>
-          <AlertList alerts={alerts || []} />
-        </Panel>
-        <Panel title="Earnings This Week" icon={CalendarDays}>
-          <EarningsList items={(earnings || []).filter((e) => e.is_this_week)} compact />
-        </Panel>
-      </section>
-      <button className="gold-button" onClick={() => setActive("screener")}><Play size={18} /> Run Screener</button>
     </div>
+  );
+}
+
+function MiniPerformanceChart({ stats }) {
+  const gain = Number(stats?.gain_loss_pct || 0);
+  const data = Array.from({ length: 12 }, (_, i) => ({
+    month: `M${i + 1}`,
+    value: Math.round((Math.sin(i / 1.8) * 9 + gain * (i / 12)) * 100) / 100,
+  }));
+  return (
+    <div>
+      <div className={gain >= 0 ? "text-3xl font-semibold text-emerald-300" : "text-3xl font-semibold text-red-300"}>{fmt(gain)}%</div>
+      <div className="mt-1 text-sm text-stone-400">Since inception</div>
+      <div className="mt-5 h-56">
+        <ResponsiveContainer>
+          <LineChart data={data}>
+            <XAxis dataKey="month" stroke="#78716c" />
+            <YAxis stroke="#78716c" />
+            <Tooltip />
+            <Line type="monotone" dataKey="value" stroke="#d9a84b" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function OpportunityList() {
+  const items = [
+    ["Hindustan Unilever", "FMCG", 91],
+    ["Bajaj Finance", "NBFC", 89],
+    ["Infosys", "IT", 87],
+    ["State Bank of India", "Banking", 84],
+  ];
+  return (
+    <div className="space-y-3">
+      {items.map(([name, sector, score], index) => (
+        <div key={name} className="opportunity-row">
+          <div className="rank-pill">{index + 1}</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-semibold text-stone-100">{name}</div>
+            <div className="text-xs text-stone-400">{sector}</div>
+          </div>
+          <div className="score-ring">{score}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PlaceholderPage({ active, setActive }) {
+  const titles = {
+    watchlist: "Watchlist",
+    saved: "Saved Screens",
+    settings: "Settings",
+  };
+  return (
+    <Panel title={titles[active] || "Coming Soon"} icon={Sparkles}>
+      <div className="empty-state flex-col p-8 text-center">
+        <div className="text-lg font-semibold text-stone-100">{titles[active]} workspace is ready for the next feature pass.</div>
+        <button className="gold-button mt-4" onClick={() => setActive(active === "watchlist" ? "portfolio" : "screener")}>
+          Open {active === "watchlist" ? "Portfolio" : "Screener"}
+        </button>
+      </div>
+    </Panel>
   );
 }
 
@@ -755,7 +847,7 @@ function DualRangeField({ label, minValue, maxValue, onMinChange, onMaxChange, m
   const currentMax = maxValue ?? max;
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm font-medium text-zinc-700">
+      <div className="flex items-center justify-between text-sm font-medium text-stone-300">
         <span>{label}</span>
         <span className="range-value">{fmt(currentMin)} - {fmt(currentMax)} {suffix}</span>
       </div>
@@ -804,12 +896,12 @@ function Stats({ stats }) {
 
 function AlertList({ alerts }) {
   if (!alerts.length) return <p className="text-sm text-zinc-500">No portfolio hard-filter violations.</p>;
-  return <div className="space-y-2">{alerts.map((a) => <div key={a.symbol} className="rounded border border-red-200 bg-red-50 p-3"><div className="flex items-center gap-2 font-semibold text-red-800"><AlertTriangle size={17} /> {a.symbol} - {a.flag}</div><div className="mt-1 text-sm text-red-700">{a.failures.map((f) => f.criterion).join(", ")}</div></div>)}</div>;
+  return <div className="space-y-2">{alerts.map((a) => <div key={a.symbol} className="rounded border border-red-400/30 bg-red-500/10 p-3"><div className="flex items-center gap-2 font-semibold text-red-200"><AlertTriangle size={17} /> {a.symbol} - {a.flag}</div><div className="mt-1 text-sm text-red-200/80">{a.failures.map((f) => f.criterion).join(", ")}</div></div>)}</div>;
 }
 
 function EarningsList({ items, compact }) {
   if (!items.length) return <p className="text-sm text-zinc-500">No earnings in this view.</p>;
-  return <div className="space-y-2">{items.map((e) => <div key={e.symbol} className={`flex items-center justify-between border-b border-zinc-100 py-2 ${e.is_this_week ? "font-semibold text-amber-800" : ""}`}><div><div>{e.company_name}</div><div className="text-xs text-zinc-500">{e.symbol} · {e.sector}</div></div><div className="text-right text-sm">{new Date(e.earnings_date).toLocaleDateString("en-IN")}{!compact && <div className="text-xs text-zinc-500">Buy prep before date</div>}</div></div>)}</div>;
+  return <div className="space-y-2">{items.map((e) => <div key={e.symbol} className={`flex items-center justify-between border-b border-amber-500/10 py-2 ${e.is_this_week ? "font-semibold text-amber-200" : "text-stone-200"}`}><div><div>{e.company_name}</div><div className="text-xs text-stone-500">{e.symbol} · {e.sector}</div></div><div className="text-right text-sm">{new Date(e.earnings_date).toLocaleDateString("en-IN")}{!compact && <div className="text-xs text-stone-500">Buy prep before date</div>}</div></div>)}</div>;
 }
 
 function Panel({ title, icon: Icon, children }) {

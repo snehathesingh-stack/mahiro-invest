@@ -14,13 +14,16 @@ body,
   .app-shell {
     @apply min-h-screen bg-[#08090a] text-stone-100;
     background-image:
-      radial-gradient(circle at 80% 0%, rgba(217, 168, 75, 0.1), transparent 30%),
-      linear-gradient(180deg, #101214 0%, #08090a 42%, #070707 100%);
+      radial-gradient(circle at 78% 4%, rgba(217, 168, 75, 0.16), transparent 28%),
+      radial-gradient(circle at 12% 18%, rgba(20, 184, 166, 0.08), transparent 24%),
+      linear-gradient(180deg, #101214 0%, #08090a 44%, #060606 100%);
   }
 
   .app-sidebar {
-    @apply fixed inset-y-0 left-0 hidden w-72 border-r border-amber-500/20 bg-[#0b0d0e]/95 lg:block;
-    background-image: linear-gradient(180deg, rgba(217,168,75,0.08), transparent 40%);
+    @apply fixed inset-y-0 left-0 hidden w-72 border-r border-amber-500/20 bg-[#0b0d0e]/95 lg:flex lg:flex-col;
+    background-image:
+      linear-gradient(180deg, rgba(217,168,75,0.1), transparent 36%),
+      radial-gradient(circle at 50% 86%, rgba(217,168,75,0.15), transparent 28%);
   }
 
   .app-header {
@@ -28,7 +31,8 @@ body,
   }
 
   .premium-card {
-    @apply rounded-lg border border-amber-500/20 bg-[#151719]/90 shadow-xl shadow-black/20;
+    @apply rounded-lg border border-amber-500/20 bg-[#151719]/90 shadow-xl shadow-black/25;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 18px 45px rgba(0,0,0,0.28);
   }
 
   .premium-heading {
@@ -41,7 +45,7 @@ body,
   }
 
   .brand-logo {
-    @apply h-20 w-20 shrink-0 rounded-full border border-amber-500/30 bg-white object-cover shadow-lg shadow-amber-950/40;
+    @apply h-32 w-32 shrink-0 rounded-full border border-amber-400/40 bg-white object-cover shadow-2xl shadow-amber-950/50;
   }
 
   .brand-logo-sm {
@@ -54,14 +58,19 @@ body,
   }
 
   .hero-band {
-    @apply premium-card flex flex-col gap-6 overflow-hidden p-7 md:flex-row md:items-center;
+    @apply premium-card relative flex flex-col gap-6 overflow-hidden p-7 md:flex-row md:items-center;
     background-image:
-      radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.18), transparent 28%),
+      linear-gradient(90deg, rgba(217,168,75,0.1), transparent 45%),
+      radial-gradient(circle at 82% 22%, rgba(251, 191, 36, 0.2), transparent 26%),
       linear-gradient(135deg, rgba(217, 168, 75, 0.12), rgba(12, 14, 15, 0.9));
   }
 
   .hero-logo {
-    @apply h-32 w-32 shrink-0 rounded-full border border-amber-400/40 object-cover shadow-2xl shadow-amber-950/50;
+    @apply h-36 w-36 shrink-0 rounded-full border border-amber-400/50 bg-white object-cover shadow-2xl shadow-amber-950/50;
+  }
+
+  .dashboard-grid {
+    @apply grid gap-5 xl:grid-cols-[minmax(0,1fr)_345px];
   }
 
   .screener-shell {
@@ -70,10 +79,11 @@ body,
 
   .filter-sidebar {
     @apply premium-card p-5 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-auto;
+    scrollbar-color: rgba(217,168,75,0.45) transparent;
   }
 
   .results-toolbar {
-    @apply premium-card flex flex-col justify-between gap-4 p-5 md:flex-row md:items-center;
+    @apply premium-card flex flex-col justify-between gap-4 p-5 xl:flex-row xl:items-center;
   }
 
   .sticky-actions {
@@ -81,7 +91,7 @@ body,
   }
 
   .nav-button {
-    @apply flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-stone-300 hover:bg-amber-500/10 hover:text-amber-100;
+    @apply flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-sm text-stone-300 hover:bg-amber-500/10 hover:text-amber-100;
   }
 
   .nav-active {
@@ -108,6 +118,14 @@ body,
     @apply inline-flex items-center justify-center gap-2 rounded-md border border-amber-500/25 bg-[#101214] px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/10;
   }
 
+  .sidebar-profile {
+    @apply mx-4 mb-4 mt-auto flex items-center gap-3 rounded-lg border border-amber-500/20 bg-black/25 p-4;
+  }
+
+  .profile-avatar {
+    @apply grid h-11 w-11 shrink-0 place-items-center rounded-full border border-amber-400/40 bg-amber-400/15 text-sm font-semibold text-amber-100;
+  }
+
   .input {
     @apply rounded-md border border-amber-500/20 bg-[#0c0e10] px-3 py-2.5 text-sm text-stone-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/10;
   }
@@ -121,7 +139,7 @@ body,
   }
 
   .data-table {
-    @apply w-full min-w-[900px] border-collapse text-sm;
+    @apply w-full min-w-[1050px] border-collapse text-sm;
   }
 
   .data-table th {
@@ -134,6 +152,18 @@ body,
 
   .data-table tbody tr {
     @apply hover:bg-amber-500/5;
+  }
+
+  .opportunity-row {
+    @apply flex items-center gap-3 rounded-md border border-amber-500/15 bg-black/20 p-3;
+  }
+
+  .rank-pill {
+    @apply grid h-7 w-7 shrink-0 place-items-center rounded-md bg-amber-400 text-xs font-bold text-zinc-950;
+  }
+
+  .score-ring {
+    @apply grid h-11 w-11 shrink-0 place-items-center rounded-full border border-amber-400/60 text-sm font-semibold text-amber-100;
   }
 
   .empty-state {
