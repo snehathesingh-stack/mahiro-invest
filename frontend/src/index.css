@@ -23,7 +23,8 @@ body,
     @apply fixed inset-y-0 left-0 hidden w-72 border-r border-amber-500/20 bg-[#0b0d0e]/95 lg:flex lg:flex-col;
     background-image:
       linear-gradient(180deg, rgba(217,168,75,0.1), transparent 36%),
-      radial-gradient(circle at 50% 86%, rgba(217,168,75,0.15), transparent 28%);
+      radial-gradient(circle at 50% 86%, rgba(217,168,75,0.15), transparent 28%),
+      linear-gradient(160deg, rgba(217,168,75,0.08), transparent 56%);
   }
 
   .app-header {
@@ -63,6 +64,14 @@ body,
       linear-gradient(90deg, rgba(217,168,75,0.1), transparent 45%),
       radial-gradient(circle at 82% 22%, rgba(251, 191, 36, 0.2), transparent 26%),
       linear-gradient(135deg, rgba(217, 168, 75, 0.12), rgba(12, 14, 15, 0.9));
+  }
+
+  .hero-band::after {
+    content: "";
+    @apply pointer-events-none absolute bottom-0 right-0 h-32 w-80 opacity-50;
+    background:
+      linear-gradient(135deg, transparent 20%, rgba(217,168,75,0.18) 21%, transparent 22%),
+      linear-gradient(25deg, transparent 45%, rgba(217,168,75,0.12) 46%, transparent 47%);
   }
 
   .hero-logo {
@@ -119,11 +128,15 @@ body,
   }
 
   .sidebar-profile {
-    @apply mx-4 mb-4 mt-auto flex items-center gap-3 rounded-lg border border-amber-500/20 bg-black/25 p-4;
+    @apply mx-4 mb-4 mt-auto grid gap-3 rounded-lg border border-amber-500/25 bg-black/30 p-4;
   }
 
   .profile-avatar {
     @apply grid h-11 w-11 shrink-0 place-items-center rounded-full border border-amber-400/40 bg-amber-400/15 text-sm font-semibold text-amber-100;
+  }
+
+  .sidebar-logout {
+    @apply flex w-full items-center justify-center gap-2 rounded-md border border-amber-500/20 bg-black/20 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/10;
   }
 
   .input {
@@ -164,6 +177,18 @@ body,
 
   .score-ring {
     @apply grid h-11 w-11 shrink-0 place-items-center rounded-full border border-amber-400/60 text-sm font-semibold text-amber-100;
+  }
+
+  .snapshot-grid {
+    @apply grid gap-3 md:grid-cols-[180px_repeat(4,minmax(0,1fr))];
+  }
+
+  .pass-dial {
+    @apply grid min-h-36 place-items-center rounded-full border-[10px] border-amber-400/70 bg-black/30 p-6 text-center shadow-xl shadow-amber-950/30;
+  }
+
+  .filter-tag {
+    @apply rounded-md border border-amber-500/20 bg-black/20 px-3 py-2 text-xs font-semibold text-stone-200;
   }
 
   .empty-state {

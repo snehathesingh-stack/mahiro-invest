@@ -10,6 +10,7 @@ import {
   Edit3,
   Eye,
   ExternalLink,
+  FileText,
   ListPlus,
   LogOut,
   PieChart as PieIcon,
@@ -56,7 +57,9 @@ const NAV = [
   ["screener", Search, "Screener"],
   ["portfolio", Wallet, "Portfolio"],
   ["earnings", CalendarDays, "Earnings"],
+  ["alerts", Bell, "Alerts"],
   ["watchlist", Star, "Watchlist"],
+  ["reports", FileText, "Reports"],
   ["saved", Bookmark, "Saved Screens"],
   ["personas", Edit3, "Personas"],
   ["settings", Settings, "Settings"],
@@ -111,11 +114,15 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-profile">
-          <div className="profile-avatar">{(user?.name || "Investor").slice(0, 1).toUpperCase()}</div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-stone-100">{user?.name || "Investor"}</div>
-            <div className="mt-1 text-xs text-amber-200">Quality investor</div>
+          <div className="flex items-center gap-3">
+            <div className="profile-avatar">{(user?.name || "Investor").slice(0, 1).toUpperCase()}</div>
+            <div className="min-w-0">
+              <div className="text-xs text-stone-500">Signed in as</div>
+              <div className="truncate text-sm font-semibold text-stone-100">{user?.name || "Investor"}</div>
+              <div className="mt-1 inline-flex rounded border border-amber-400/35 px-2 py-0.5 text-[11px] text-amber-200">Pro Plan</div>
+            </div>
           </div>
+          <button title="Sign out" className="sidebar-logout" onClick={logout}><LogOut size={17} /> Log out</button>
         </div>
       </aside>
       <main className="lg:pl-72">
@@ -139,7 +146,7 @@ export default function App() {
           {active === "portfolio" && <Portfolio api={api} />}
           {active === "earnings" && <Earnings api={api} />}
           {active === "personas" && <Personas api={api} />}
-          {["watchlist", "saved", "settings"].includes(active) && <PlaceholderPage active={active} setActive={setActive} />}
+          {["watchlist", "saved", "settings", "alerts", "reports"].includes(active) && <PlaceholderPage active={active} setActive={setActive} />}
         </div>
       </main>
     </div>
@@ -222,6 +229,23 @@ function Dashboard({ api, setActive, user }) {
             </div>
           </section>
           <Stats stats={portfolio?.stats} />
+          <Panel title="Screener Snapshot" icon={Star}>
+            <section className="snapshot-grid">
+              <div className="pass-dial">
+                <div className="text-4xl font-semibold text-stone-100">8</div>
+                <div className="text-sm text-stone-400">Stocks Passed</div>
+              </div>
+              {[
+                ["Active Filters", "16"],
+                ["Stocks Analyzed", "5,343"],
+                ["Passed", "8"],
+                ["Pass Rate", "0.15%"],
+              ].map(([label, value]) => <Metric key={label} label={label} value={value} />)}
+            </section>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["ROE > 15%", "Debt < 1", "Revenue Growth > 10%", "FII Range", "DII Range"].map((item) => <span key={item} className="filter-tag">{item}</span>)}
+            </div>
+          </Panel>
           <section className="grid items-start gap-4 xl:grid-cols-[1.2fr_.8fr]">
             <Panel title="Portfolio Performance" icon={BarChart3}>
               <MiniPerformanceChart stats={portfolio?.stats} />
