@@ -90,6 +90,7 @@ Frontend on Vercel:
 - Build command: `npm run build`
 - Output directory: `dist`
 - Set `VITE_API_URL` to the deployed backend URL.
+- The frontend includes `frontend/vercel.json` for Vite build settings and SPA routing.
 
 ## Data Quality
 
