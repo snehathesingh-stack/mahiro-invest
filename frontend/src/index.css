@@ -179,6 +179,10 @@ body,
     @apply grid h-11 w-11 shrink-0 place-items-center rounded-full border border-amber-400/60 text-sm font-semibold text-amber-100;
   }
 
+  .chart-box {
+    @apply h-64 min-h-64 w-full min-w-0 overflow-hidden;
+  }
+
   .snapshot-grid {
     @apply grid gap-3 md:grid-cols-[180px_repeat(4,minmax(0,1fr))];
   }

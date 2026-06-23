@@ -133,7 +133,7 @@ export default function App() {
               <h1 className="text-xl font-semibold text-stone-100">{NAV.find((n) => n[0] === active)?.[2]}</h1>
             </div>
             <div className="flex items-center gap-2">
-              <select className="lg:hidden input" value={active} onChange={(e) => setActive(e.target.value)}>
+              <select id="mobile-section" name="mobile_section" className="lg:hidden input" value={active} onChange={(e) => setActive(e.target.value)}>
                 {NAV.map(([id, , label]) => <option key={id} value={id}>{label}</option>)}
               </select>
               <button title="Sign out" className="icon-button" onClick={logout}><LogOut size={18} /></button>
@@ -185,9 +185,9 @@ function AuthPage({ onAuth }) {
         <div className="mb-5">
           <BrandBlock compact />
         </div>
-        {mode === "register" && <input className="auth-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" />}
-        <input className="auth-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" />
-        <input className="auth-input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" />
+        {mode === "register" && <input id="auth-name" name="name" className="auth-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" />}
+        <input id="auth-email" name="email" className="auth-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email" />
+        <input id="auth-password" name="password" className="auth-input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" />
         {error && <div className="mb-3 rounded border border-red-800 bg-red-950 p-2 text-sm text-red-200">{error}</div>}
         <button className="primary-button w-full">{mode === "login" ? "Login" : "Register"}</button>
         <button type="button" className="mt-3 w-full text-sm text-zinc-400" onClick={() => setMode(mode === "login" ? "register" : "login")}>
@@ -251,7 +251,7 @@ function Dashboard({ api, setActive, user }) {
               <MiniPerformanceChart stats={portfolio?.stats} />
             </Panel>
             <Panel title="Sector Allocation" icon={PieIcon}>
-              <div className="h-64"><ResponsiveContainer><PieChart><Pie data={portfolio?.sector_allocation || []} dataKey="value" nameKey="sector">{(portfolio?.sector_allocation || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip formatter={(v) => money(v)} /></PieChart></ResponsiveContainer></div>
+              <div className="chart-box"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={portfolio?.sector_allocation || []} dataKey="value" nameKey="sector">{(portfolio?.sector_allocation || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip formatter={(v) => money(v)} /></PieChart></ResponsiveContainer></div>
             </Panel>
           </section>
         </div>
@@ -281,8 +281,8 @@ function MiniPerformanceChart({ stats }) {
     <div>
       <div className={gain >= 0 ? "text-3xl font-semibold text-emerald-300" : "text-3xl font-semibold text-red-300"}>{fmt(gain)}%</div>
       <div className="mt-1 text-sm text-stone-400">Since inception</div>
-      <div className="mt-5 h-56">
-        <ResponsiveContainer>
+      <div className="chart-box mt-5">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <XAxis dataKey="month" stroke="#78716c" />
             <YAxis stroke="#78716c" />
@@ -468,13 +468,13 @@ function Screener({ api }) {
           </div>
           <label className="field-label mb-4">
             <span>Investor persona</span>
-            <select className="input w-full" value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
+            <select id="screener-persona" name="screener_persona" className="input w-full" value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
               {personas.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
           <div className="mb-4 flex gap-2">
             <button className="secondary-button flex-1" type="button" onClick={duplicateCurrent}>Duplicate</button>
-            <select className="input min-w-0 flex-1" defaultValue="" onChange={(e) => e.target.value && createPreset(e.target.value)}>
+            <select id="screener-preset" name="screener_preset" className="input min-w-0 flex-1" defaultValue="" onChange={(e) => e.target.value && createPreset(e.target.value)}>
               <option value="">Create preset</option>
               {PERSONA_PRESETS.map((preset) => <option key={preset} value={preset}>{preset}</option>)}
             </select>
@@ -507,10 +507,10 @@ function Screener({ api }) {
             </div>
             <div className="relative min-w-72">
               <Search className="pointer-events-none absolute left-3 top-3 text-zinc-400" size={17} />
-              <input className="input w-full pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search stock or symbol" />
+              <input id="stock-search" name="stock_search" className="input w-full pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search stock or symbol" />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <select className="input" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <select id="result-sort" name="result_sort" className="input" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                 {SORT_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
               </select>
               <button className="icon-button" title="Toggle sort direction" onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}><ArrowUpDown size={17} /></button>
@@ -592,7 +592,7 @@ function StockDetail({ api, stock, personaId }) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[
           ["Market Cap", `${fmt(stock.market_cap_cr)} Cr`], ["P/E", fmt(f.pe_ratio)], ["EPS", fmt(f.eps)], ["ROE", `${fmt(f.roe)}%`], ["Revenue", `${fmt(f.revenue_growth_yoy)}%`], ["Margin", `${fmt(f.profit_margin)}%`], ["Debt/Equity", fmt(f.debt_to_equity)], ["FII", `${fmt(f.fii_holding_pct)}%`], ["DII", `${fmt(f.dii_holding_pct)}%`], ["Public", `${fmt(f.public_holding_pct)}%`],
         ].map(([k, v]) => <Metric key={k} label={k} value={v} />)}</div>
-        <div className="mt-5 h-56"><ResponsiveContainer><LineChart data={chart}><XAxis dataKey="year" /><YAxis /><Tooltip /><Line dataKey="eps" stroke="#0f766e" strokeWidth={2} /><Line dataKey="revenue" stroke="#b45309" strokeWidth={2} /></LineChart></ResponsiveContainer></div>
+        <div className="chart-box mt-5"><ResponsiveContainer width="100%" height="100%"><LineChart data={chart}><XAxis dataKey="year" /><YAxis /><Tooltip /><Line dataKey="eps" stroke="#0f766e" strokeWidth={2} /><Line dataKey="revenue" stroke="#b45309" strokeWidth={2} /></LineChart></ResponsiveContainer></div>
       </Panel>
       <Panel title="Why It Passed Or Failed" icon={CheckCircle2}>
         <div className="mb-4 grid gap-3 sm:grid-cols-2">
@@ -633,15 +633,15 @@ function Portfolio({ api }) {
       <section className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <Panel title="Holdings" icon={Wallet}>
           <form onSubmit={add} className="toolbar mb-4">
-            <input className="input" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} />
-            <input className="input" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
-            <input className="input" type="number" value={form.avg_buy_price} onChange={(e) => setForm({ ...form, avg_buy_price: Number(e.target.value) })} />
+            <input id="holding-symbol" name="holding_symbol" className="input" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} />
+            <input id="holding-quantity" name="holding_quantity" className="input" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} />
+            <input id="holding-average-price" name="holding_average_price" className="input" type="number" value={form.avg_buy_price} onChange={(e) => setForm({ ...form, avg_buy_price: Number(e.target.value) })} />
             <button title="Add holding" className="primary-button"><Plus size={18} /> Add</button>
           </form>
           <div className="overflow-auto"><table className="data-table"><thead><tr>{["Stock", "Qty", "Avg", "Current", "P&L", "Return", "Days"].map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{portfolio?.holdings.map((h) => <tr key={h.id}><td>{h.symbol}</td><td>{h.quantity}</td><td>{money(h.avg_buy_price)}</td><td>{money(h.current_price)}</td><td className={h.gain_loss >= 0 ? "text-teal-700" : "text-red-700"}>{money(h.gain_loss)}</td><td>{fmt(h.return_pct)}%</td><td>{h.days_held}</td></tr>)}</tbody></table></div>
         </Panel>
         <Panel title="Sector Allocation" icon={PieIcon}>
-          <div className="h-64"><ResponsiveContainer><PieChart><Pie data={portfolio?.sector_allocation || []} dataKey="value" nameKey="sector">{(portfolio?.sector_allocation || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip formatter={(v) => money(v)} /></PieChart></ResponsiveContainer></div>
+          <div className="chart-box"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={portfolio?.sector_allocation || []} dataKey="value" nameKey="sector">{(portfolio?.sector_allocation || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip formatter={(v) => money(v)} /></PieChart></ResponsiveContainer></div>
           <Watchlists api={api} items={watchlists} reload={load} />
         </Panel>
       </section>
@@ -656,7 +656,7 @@ function Watchlists({ api, items, reload }) {
     await api("/watchlists/", { method: "POST", body: { name, stock_ids: symbols.split(",").map((s) => s.trim()).filter(Boolean) } });
     reload();
   }
-  return <div className="border-t border-zinc-200 pt-4"><div className="mb-2 font-medium">Watchlists</div><div className="flex gap-2"><input className="input min-w-0" value={name} onChange={(e) => setName(e.target.value)} /><button title="Create watchlist" className="icon-button" onClick={add}><Plus size={17} /></button></div><input className="input mt-2 w-full" value={symbols} onChange={(e) => setSymbols(e.target.value)} />{items.map((w) => <div key={w.id} className="mt-2 text-sm text-zinc-600">{w.name}: {w.stock_ids.join(", ")}</div>)}</div>;
+  return <div className="border-t border-amber-500/15 pt-4"><div className="mb-2 font-medium">Watchlists</div><div className="flex gap-2"><input id="watchlist-name" name="watchlist_name" className="input min-w-0" value={name} onChange={(e) => setName(e.target.value)} /><button title="Create watchlist" className="icon-button" onClick={add}><Plus size={17} /></button></div><input id="watchlist-symbols" name="watchlist_symbols" className="input mt-2 w-full" value={symbols} onChange={(e) => setSymbols(e.target.value)} />{items.map((w) => <div key={w.id} className="mt-2 text-sm text-stone-400">{w.name}: {w.stock_ids.join(", ")}</div>)}</div>;
 }
 
 function Earnings({ api }) {
@@ -664,7 +664,7 @@ function Earnings({ api }) {
   const [scope, setScope] = useState("full");
   const [items, setItems] = useState([]);
   useEffect(() => { api(`/earnings/upcoming?days=${days}&scope=${scope}`).then(setItems); }, [days, scope]);
-  return <Panel title="Upcoming NSE Earnings" icon={CalendarDays}><div className="toolbar mb-4"><select className="input" value={days} onChange={(e) => setDays(Number(e.target.value))}><option>30</option><option>60</option><option>90</option></select><select className="input" value={scope} onChange={(e) => setScope(e.target.value)}><option value="full">Full NSE Universe</option><option value="portfolio">Portfolio</option></select></div><EarningsList items={items} /></Panel>;
+  return <Panel title="Upcoming NSE Earnings" icon={CalendarDays}><div className="toolbar mb-4"><select id="earnings-days" name="earnings_days" className="input" value={days} onChange={(e) => setDays(Number(e.target.value))}><option>30</option><option>60</option><option>90</option></select><select id="earnings-scope" name="earnings_scope" className="input" value={scope} onChange={(e) => setScope(e.target.value)}><option value="full">Full NSE Universe</option><option value="portfolio">Portfolio</option></select></div><EarningsList items={items} /></Panel>;
 }
 
 function Personas({ api }) {
@@ -717,7 +717,7 @@ function Personas({ api }) {
     <section className="grid gap-5 xl:grid-cols-[340px_1fr]">
       <Panel title="Investor Profiles" icon={ShieldCheck}>
         <div className="mb-4 grid gap-2">
-          <select className="input w-full" defaultValue="" onChange={(e) => createPreset(e.target.value)}>
+          <select id="persona-preset" name="persona_preset" className="input w-full" defaultValue="" onChange={(e) => createPreset(e.target.value)}>
             <option value="">Create profile preset</option>
             {PERSONA_PRESETS.map((preset) => <option key={preset} value={preset}>{preset}</option>)}
           </select>
@@ -738,11 +738,11 @@ function Personas({ api }) {
           <div className="mb-5 grid gap-3 md:grid-cols-[1fr_2fr]">
             <label className="field-label">
               <span>Profile name</span>
-              <input className="input w-full" value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} />
+              <input id="persona-name" name="persona_name" className="input w-full" value={selected.name} onChange={(e) => setSelected({ ...selected, name: e.target.value })} />
             </label>
             <label className="field-label">
               <span>Description</span>
-              <input className="input w-full" value={selected.description || ""} onChange={(e) => setSelected({ ...selected, description: e.target.value })} />
+              <input id="persona-description" name="persona_description" className="input w-full" value={selected.description || ""} onChange={(e) => setSelected({ ...selected, description: e.target.value })} />
             </label>
           </div>
           <PreferenceEditor persona={selected} onChange={setSelected} />
@@ -854,14 +854,15 @@ function Facet({ title, children }) {
 
 function RangeField({ label, value, onChange, min, max, step = 1, suffix = "" }) {
   const current = value ?? min;
+  const fieldId = fieldIdFromLabel(label);
   return (
     <label className="range-field">
       <span className="flex items-center justify-between gap-3">
         <span>{label}</span>
         <span className="range-value">{fmt(current)} {suffix}</span>
       </span>
-      <input type="range" min={min} max={max} step={step} value={current} onChange={(e) => onChange(Number(e.target.value))} />
-      <input className="input w-full" type="number" min={min} max={max} step={step} value={current} onChange={(e) => onChange(Number(e.target.value))} />
+      <input id={`${fieldId}-slider`} name={`${fieldId}_slider`} type="range" min={min} max={max} step={step} value={current} onChange={(e) => onChange(Number(e.target.value))} />
+      <input id={`${fieldId}-number`} name={`${fieldId}_number`} className="input w-full" type="number" min={min} max={max} step={step} value={current} onChange={(e) => onChange(Number(e.target.value))} />
     </label>
   );
 }
@@ -884,9 +885,10 @@ function DualRangeField({ label, minValue, maxValue, onMinChange, onMaxChange, m
 }
 
 function CheckBox({ label, checked, onChange }) {
+  const fieldId = fieldIdFromLabel(label);
   return (
     <label className="check-row">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input id={fieldId} name={fieldId} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span>{label}</span>
     </label>
   );
@@ -905,7 +907,7 @@ function MultiCheck({ options, selected, onChange }) {
     <div className="multi-check">
       {options.map((option) => (
         <label key={option} className="check-row">
-          <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
+          <input id={`sector-${fieldIdFromLabel(option)}`} name="sector_filter" type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
           <span>{option}</span>
         </label>
       ))}
@@ -963,6 +965,10 @@ function dataQuality(snapshot) {
 function chartUrl(symbol) {
   const base = String(symbol || "").replace(".NS", "").toUpperCase();
   return `https://www.tradingview.com/chart/?symbol=NSE%3A${encodeURIComponent(base)}`;
+}
+
+function fieldIdFromLabel(label) {
+  return String(label || "field").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "field";
 }
 
 function sortResults(a, b, sortBy, dir) {
